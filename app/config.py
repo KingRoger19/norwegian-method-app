@@ -22,5 +22,9 @@ class Settings(BaseSettings):
     # LT1 is approximated as this fraction of LTHR (LT2) until .fit data is available
     lt1_lthr_ratio: float = 0.88
 
+    # Dashboard authentication (local gate only)
+    coros_email: str = ""
+    coros_password: str = ""
+
 
 settings = Settings()
