@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: coros_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: groggero
+      POSTGRES_PASSWORD: juvsar-pirRux-1jugve
+      POSTGRES_DB: data_and_miles
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
