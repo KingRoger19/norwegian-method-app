@@ -4,17 +4,31 @@ A fitness analytics app for Norwegian Method endurance training, planned to be d
 
 The project is in early scaffolding stage — the architecture is designed (`Ark_v1.0.drawio`) but most implementation is yet to be built.
 
-## Setup
+## Setup & Running
 
 This project uses `uv` for Python dependency management.
 
 ```bash
 uv sync          # install dependencies
-uv run main.py   # run the app
 uv add <pkg>     # add a dependency
 ```
 
-Python version: 3.10 (pinned in `.python-version`).
+Python version: 3.11 (pinned in `.python-version`).
+
+### Start the backend (FastAPI)
+
+```bash
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+### Start the frontend (Next.js)
+
+```bash
+cd frontend
+npm run dev      # http://localhost:3000
+```
+
+The frontend proxies all `/api/*` requests to `localhost:8000` via Next.js rewrites.
 
 ## Planned Architecture
 
