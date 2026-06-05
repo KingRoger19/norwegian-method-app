@@ -125,6 +125,21 @@ Houses dense time-series streams parsed from raw files. Leverages PostgreSQL JSO
 }
 ```
 
+## Planned Dataflow
+
+```
+[ Coros API / MCP ] ────► [ Phase 1: High-Level Sync ] ────► Saves to: daily_metrics
+                                                                     sleep_records
+                                                                     activity_summaries (metadata)
+                                                                            │
+[ Raw .fit File ]   ────► [ Phase 2: High-Res Parsing ] ◄───────────────────┘
+                            (Calculates Z1/Z2/Z3 & Double Thresholds)
+                                       │
+                                       ▼
+                        Saves to: activity_time_series (JSONB)
+                                  Updates activity_summaries (Calculated Fields)
+```
+
 ### Key Metrics to Implement
 - **Weekly Threshold Volume**: Total km or time strictly in Zone 2 (LT1–LT2)
 - **Autonomic Recovery Score**: 7-day rolling waking HRV overlaid against total threshold volume to detect nervous system overload
