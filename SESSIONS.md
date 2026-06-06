@@ -1,5 +1,68 @@
 # Session Log
 
+## Session 3 — 2026-06-06
+
+### What was built
+
+**Backend (FastAPI)**
+- `models.py` — Added `AthleteProfile` singleton table (`CHECK (id = 1)`): max_hr, resting_hr, lt1_hr, lt2_hr, lt1_lthr_ratio, lt1/lt2 pace (sec/km), ftp_watts, weekly_zone2_target_mins, date_of_birth, gender, height_cm, weight_kg, updated_at
+- `models.py` — Added 10 lactate columns to `activity_summaries`: `lactate_1_mmol` … `lactate_5_mmol` (float) and `lactate_1_notes` … `lactate_5_notes` (text)
+- `models.py` — Removed `is_double_threshold` column from `activity_summaries`
+- `app/services/athlete.py` — New: `load_profile()`, `effective_max_hr()`, `effective_lt1_ratio()`, `effective_lt2_hr()`, `effective_lt1_hr()` — profile always takes priority over `.env` hardcoded values
+- `app/routers/athlete.py` — New: `GET /api/athlete`, `PUT /api/athlete` (upsert with `ON CONFLICT DO UPDATE`)
+- `app/routers/activities.py` — Added `PATCH /api/activities/{id}` for inline lactate entry; added `GET /api/activities/count`; `list_activities` now accepts `offset` param (up to 500 limit)
+- `app/routers/fit_import.py` — Added `POST /api/import/fit/upload` multipart endpoint (saves to tempdir, runs background import, cleans up)
+- `app/routers/dashboard.py` — Removed `double_threshold_days` query; weekly_zone2_target now loaded from `athlete_profile`
+- `app/services/ingestion.py` — Removed `_refresh_double_threshold()` and all call sites; max_hr upsert now conditional (preserves backfilled values on re-sync)
+- `app/services/fit_importer.py` — Now loads `athlete_profile` for `effective_max_hr` and `effective_lt1_ratio`; removed `_refresh_double_threshold` call
+- `app/services/coros_client.py` — Added `max_hr` parsing from activity detail response
+
+**Frontend (Next.js 16 + Tailwind v4)**
+- `components/NavDrawer.tsx` — Hamburger slide-in drawer with 3 nav items: Dashboard, Advanced Metrics, Athlete Profile; active link highlighted via `usePathname()`
+- `components/UploadFitButton.tsx` — File picker for `.fit` files, POSTs multipart to `/api/import/fit/upload`, polls status every 2s, shows toast on completion
+- `app/advanced-metrics/page.tsx` — Paginated table (50/page) of all activities with inline lactate data entry per row; per-row save state (idle/saving/saved/error)
+- `app/athlete-settings/page.tsx` — Settings page with 5 grouped section cards (Personal, Cardiac, Lactate Thresholds, Power, Training Targets); PaceInput split M:SS control; GenderPicker segmented button; derived LT1 hint
+- `app/layout.tsx` — Added `suppressHydrationWarning` to `<html>` and `<body>` (fixes browser-extension attribute injection)
+- `components/KpiCards.tsx` — Removed `DoubleThresholdCard`
+- `components/ActivityTable.tsx` — Removed Double Day column; `colSpan` fixed 7→6
+- `components/ActivityDetailModal.tsx` — Removed Double Threshold badge
+- `app/dashboard/page.tsx` — Added NavDrawer + UploadFitButton; KPI grid 4→3 columns
+- `lib/api.ts` — Added: `LactateFields`, `AthleteProfile`, `FitImportStatus` interfaces; `uploadFitFiles()`, `getFitImportStatus()`, `getAthleteProfile()`, `updateAthleteProfile()`, `updateActivityLactate()`, `getActivitiesCount()`, `listActivities` with offset
+
+**Database migration applied**
+```sql
+ALTER TABLE activity_summaries DROP COLUMN IF EXISTS is_double_threshold;
+```
+
+### Current database state
+- Same 1,014 activities as Session 2
+- `athlete_profile` table created but empty — fill in via Athlete Profile settings page before next sync/import to get correct zone calculations
+- `is_double_threshold` column dropped from `activity_summaries`
+- Lactate columns added (all null until manually entered)
+
+### Key decisions
+- `athlete_profile` is a singleton row (id=1, enforced by CHECK constraint). The calculation engine always prefers profile values over `.env` fallbacks.
+- `max_hr` on sync: if the incoming value is null (Coros API often omits it), the existing DB value is preserved — prevents overwriting manually backfilled or `.fit`-derived values.
+- Historical zone data (pre-May 2026) remains zero. Re-importing `.fit` files after setting `lt2_hr` in Athlete Profile will retroactively compute zones.
+
+### Known issues / decisions deferred
+- Zone data is 0 for pre-May-2026 activities — fix: set `lt2_hr` in Athlete Profile page, then re-upload `.fit` files
+- No sport column in `activity_summaries` — all displayed as "Run"; fine for now
+- DB schema is managed manually (no Alembic). Each column addition/removal requires a manual `ALTER TABLE` on the Docker container
+
+### Git
+- Commit: `f2242c0` — all session changes in one bundle on `master`
+
+### Possible next session topics
+- Fill in Athlete Profile (lt2_hr, max_hr, weekly target) to enable correct zone calculations
+- Re-upload `.fit` files to back-populate historical zones
+- Deployment to dataandmiles.com (Docker + nginx + Vercel/VPS)
+- Add sport/activity_name column to activity_summaries
+- Per-run HR% of max chart on dashboard
+- Weekly threshold volume trend chart
+
+---
+
 ## Session 2 — 2026-06-05/06
 
 ### What was built
