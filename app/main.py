@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers.activities import router as activities_router
+from app.routers.athlete import router as athlete_router
 from app.routers.auth import router as auth_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.fit_import import router as fit_import_router
@@ -35,6 +36,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router)
+app.include_router(athlete_router)
 app.include_router(dashboard_router)
 app.include_router(activities_router)
 app.include_router(sync_router)

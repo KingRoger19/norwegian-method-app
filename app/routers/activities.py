@@ -1,7 +1,8 @@
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
-from sqlalchemy import select
+from pydantic import BaseModel
+from sqlalchemy import func, select
 
 from models import ActivitySummary, ActivityTimeSeries, AsyncSessionLocal
 
@@ -41,15 +42,49 @@ def _summary_to_dict(a: ActivitySummary) -> dict[str, Any]:
         "zone2_secs": a.zone2_secs,
         "zone3_secs": a.zone3_secs,
         "zone2_pct": _z2_pct(a.zone1_secs, a.zone2_secs, a.zone3_secs, a.duration_seconds),
-        "is_double_threshold": a.is_double_threshold,
         "total_ascent": a.total_ascent,
         "avg_power": a.avg_power,
+        # lactate measurements (manually entered)
+        "lactate_1_mmol": a.lactate_1_mmol,
+        "lactate_1_notes": a.lactate_1_notes,
+        "lactate_2_mmol": a.lactate_2_mmol,
+        "lactate_2_notes": a.lactate_2_notes,
+        "lactate_3_mmol": a.lactate_3_mmol,
+        "lactate_3_notes": a.lactate_3_notes,
+        "lactate_4_mmol": a.lactate_4_mmol,
+        "lactate_4_notes": a.lactate_4_notes,
+        "lactate_5_mmol": a.lactate_5_mmol,
+        "lactate_5_notes": a.lactate_5_notes,
     }
+
+
+class LactateUpdate(BaseModel):
+    lactate_1_mmol: float | None = None
+    lactate_1_notes: str | None = None
+    lactate_2_mmol: float | None = None
+    lactate_2_notes: str | None = None
+    lactate_3_mmol: float | None = None
+    lactate_3_notes: str | None = None
+    lactate_4_mmol: float | None = None
+    lactate_4_notes: str | None = None
+    lactate_5_mmol: float | None = None
+    lactate_5_notes: str | None = None
+
+
+# /count must be declared before /{activity_id} so FastAPI doesn't treat "count" as an id
+@router.get("/count")
+async def count_activities() -> dict[str, int]:
+    async with AsyncSessionLocal() as session:
+        total = (
+            await session.execute(select(func.count()).select_from(ActivitySummary))
+        ).scalar_one()
+    return {"total": total}
 
 
 @router.get("/")
 async def list_activities(
-    limit: int = Query(default=10, ge=1, le=100),
+    limit: int = Query(default=10, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
 ) -> list[dict[str, Any]]:
     async with AsyncSessionLocal() as session:
         rows = (
@@ -57,9 +92,9 @@ async def list_activities(
                 select(ActivitySummary)
                 .order_by(ActivitySummary.date.desc(), ActivitySummary.start_time.desc())
                 .limit(limit)
+                .offset(offset)
             )
         ).scalars().all()
-
     return [_summary_to_dict(a) for a in rows]
 
 
@@ -81,3 +116,23 @@ async def get_activity(activity_id: str) -> dict[str, Any]:
     result = _summary_to_dict(summary)
     result["stream_data"] = ts_row.stream_data if ts_row else None
     return result
+
+
+@router.patch("/{activity_id}")
+async def update_activity_lactate(
+    activity_id: str,
+    body: LactateUpdate,
+) -> dict[str, bool]:
+    updates = body.model_dump(exclude_unset=True)
+    if not updates:
+        raise HTTPException(status_code=422, detail="No fields provided")
+
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            activity = await session.get(ActivitySummary, activity_id)
+            if not activity:
+                raise HTTPException(status_code=404, detail="Activity not found")
+            for field, value in updates.items():
+                setattr(activity, field, value)
+
+    return {"ok": True}

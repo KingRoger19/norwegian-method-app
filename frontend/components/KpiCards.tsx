@@ -34,38 +34,6 @@ export function WeeklyThresholdCard({ data }: { data: DashboardSummary | null })
   );
 }
 
-// ── Double Threshold Days ─────────────────────────────────────────────────────
-
-export function DoubleThresholdCard({ data }: { data: DashboardSummary | null }) {
-  const count = data?.double_threshold_days ?? 0;
-
-  return (
-    <Card label="Double-Threshold Days" sublabel="Current week">
-      <div className="tabular text-3xl font-bold text-zinc-100 tracking-tight">
-        {count}
-      </div>
-      <div className="mt-3 flex gap-1.5">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <span
-            key={i}
-            className={`text-lg ${i < count ? "opacity-100" : "opacity-20"}`}
-          >
-            🔥
-          </span>
-        ))}
-        {count > 3 && (
-          <span className="text-lg">+{count - 3}</span>
-        )}
-      </div>
-      <p className="mt-2 text-xs text-zinc-500">
-        {count === 0 && "No double days yet"}
-        {count === 1 && "Good start — one more to lock it in"}
-        {count >= 2 && "Double threshold block in progress"}
-      </p>
-    </Card>
-  );
-}
-
 // ── Autonomic HRV Status ──────────────────────────────────────────────────────
 
 const HRV_LABELS: Record<HrvStatus, { color: string; text: string; bg: string }> = {

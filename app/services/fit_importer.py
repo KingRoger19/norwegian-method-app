@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from app.config import settings
-from app.services.ingestion import _refresh_double_threshold
+from app.services.athlete import effective_lt1_ratio, effective_lt2_hr, effective_max_hr, load_profile
 from models import ActivitySummary, ActivityTimeSeries, AsyncSessionLocal, DailyMetrics
 
 logger = logging.getLogger(__name__)
@@ -137,7 +137,12 @@ def _compute_zones(
     return z1, z2, z3
 
 
-def _parse_fit(filepath: Path, lthr: int | None) -> dict | None:
+def _parse_fit(
+    filepath: Path,
+    lthr: int | None,
+    user_max_hr: int | None = None,
+    lt1_ratio: float | None = None,
+) -> dict | None:
     """Parse one .fit file with the Garmin SDK. Returns a dict for DB insertion, or None."""
     try:
         stream = Stream.from_file(str(filepath))
@@ -206,13 +211,15 @@ def _parse_fit(filepath: Path, lthr: int | None) -> dict | None:
     if total_ascent and duration_s:
         vertical_speed = round(total_ascent / (duration_s / 60), 3)
 
+    _max_hr = user_max_hr or settings.user_max_hr or None
     pct_of_hr_max = None
-    if avg_hr and settings.user_max_hr:
-        pct_of_hr_max = round(avg_hr / settings.user_max_hr * 100, 2)
+    if avg_hr and _max_hr:
+        pct_of_hr_max = round(avg_hr / _max_hr * 100, 2)
 
     stream = _build_stream(records)
     hr_series = stream.get("heart_rate", [])
-    zone1, zone2, zone3 = _compute_zones(hr_series, lthr, settings.lt1_lthr_ratio)
+    _lt1_ratio = lt1_ratio if lt1_ratio is not None else settings.lt1_lthr_ratio
+    zone1, zone2, zone3 = _compute_zones(hr_series, lthr, _lt1_ratio)
 
     summary_row = {
         "activity_id": activity_id,
@@ -306,7 +313,13 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
     if not files:
         return result
 
-    # Pre-load LTHR for all known dates
+    # Load athlete profile once — used for max_hr and LT ratios
+    profile = await load_profile()
+    user_max_hr = effective_max_hr(profile)
+    lt1_ratio = effective_lt1_ratio(profile)
+    profile_lt2_hr = profile.lt2_hr if profile else None
+
+    # Pre-load per-date LTHR from daily_metrics
     async with AsyncSessionLocal() as session:
         rows = (await session.execute(
             select(DailyMetrics.date, DailyMetrics.lactate_threshold_hr)
@@ -320,8 +333,7 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
         dates_in_batch: set[date] = set()
 
         for filepath in batch:
-            activity_date_hint = None  # resolved after parsing
-            parsed = _parse_fit(filepath, None)  # lthr filled below after date is known
+            parsed = _parse_fit(filepath, None, user_max_hr=user_max_hr, lt1_ratio=lt1_ratio)
 
             if parsed is None:
                 result.skipped += 1
@@ -329,10 +341,10 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
                 continue
 
             activity_date: date = parsed["date"]
-            # Recompute zones with the correct LTHR for this activity's date
-            lthr = lthr_by_date.get(activity_date)
+            # Per-date LTHR takes priority; fall back to profile baseline lt2_hr
+            lthr = lthr_by_date.get(activity_date) or profile_lt2_hr
             hr_series = parsed["stream"].get("heart_rate", [])
-            z1, z2, z3 = _compute_zones(hr_series, lthr, settings.lt1_lthr_ratio)
+            z1, z2, z3 = _compute_zones(hr_series, lthr, lt1_ratio)
             parsed["summary"]["zone1_secs"] = z1
             parsed["summary"]["zone2_secs"] = z2
             parsed["summary"]["zone3_secs"] = z3
@@ -354,7 +366,6 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
                     await _ensure_daily_metrics_rows(session, dates_in_batch)
                     new, updated = await _upsert_summaries(session, summary_rows)
                     await _upsert_time_series(session, stream_rows)
-                    await _refresh_double_threshold(session, dates_in_batch)
 
             result.imported += new
             result.updated += updated

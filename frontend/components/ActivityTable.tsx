@@ -22,7 +22,7 @@ export default function ActivityTable({ activities, onSelect }: Props) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
-              {["Date", "Activity", "Distance", "Duration", "Avg HR", "Z2%", "Double Day"].map(
+              {["Date", "Activity", "Distance", "Duration", "Avg HR", "Z2%"].map(
                 (h) => (
                   <th
                     key={h}
@@ -37,7 +37,7 @@ export default function ActivityTable({ activities, onSelect }: Props) {
           <tbody>
             {activities.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-zinc-600 text-sm">
+                <td colSpan={6} className="px-4 py-8 text-center text-zinc-600 text-sm">
                   No activities found
                 </td>
               </tr>
@@ -80,15 +80,6 @@ export default function ActivityTable({ activities, onSelect }: Props) {
                     </span>
                   ) : (
                     <span className="text-zinc-600">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 whitespace-nowrap">
-                  {a.is_double_threshold ? (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-400 bg-amber-950/40 border border-amber-900/50 rounded-full px-2 py-0.5">
-                      🔥 Yes
-                    </span>
-                  ) : (
-                    <span className="text-zinc-600 text-xs">—</span>
                   )}
                 </td>
               </tr>

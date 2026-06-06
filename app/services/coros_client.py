@@ -60,6 +60,7 @@ class ActivitySummaryRecord:
 class ActivityDetailRecord:
     activity_id: str
     avg_cadence: float | None = None
+    max_hr: int | None = None
     ground_time: float | None = None
     stride_height: float | None = None
     stride_ratio: float | None = None
@@ -152,8 +153,13 @@ class CorosClient:
             or data.get("heart_rate_zones")
             or data.get("hrZones")
         )
+        raw_max_hr = (
+            data.get("max_hr") or data.get("max_heart_rate")
+            or data.get("maxHR") or data.get("maxHeartRate")
+        )
         return ActivityDetailRecord(
             activity_id=activity_id,
+            max_hr=int(raw_max_hr) if raw_max_hr else None,
             avg_cadence=data.get("avg_cadence") or data.get("avgCadence"),
             ground_time=data.get("ground_time") or data.get("stance_time") or data.get("groundTime"),
             stride_height=data.get("stride_height") or data.get("vertical_oscillation") or data.get("verticalOscillation"),

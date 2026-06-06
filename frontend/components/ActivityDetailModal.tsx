@@ -93,11 +93,6 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
               <h2 className="text-base font-semibold text-zinc-100">
                 Run · {fmtShortDate(activity.date)}
               </h2>
-              {activity.is_double_threshold && (
-                <span className="text-xs bg-amber-950/60 text-amber-400 border border-amber-900/50 rounded-full px-2 py-0.5">
-                  🔥 Double Threshold
-                </span>
-              )}
             </div>
             <p className="text-xs text-zinc-500">
               {activity.distance_km.toFixed(2)} km · {activity.duration_formatted}

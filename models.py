@@ -1,6 +1,7 @@
 import os
 from datetime import date, datetime
 from typing import Optional
+from sqlalchemy import CheckConstraint
 
 from dotenv import load_dotenv
 
@@ -89,7 +90,16 @@ class ActivitySummary(Base):
     zone1_secs: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     zone2_secs: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     zone3_secs: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    is_double_threshold: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    lactate_1_mmol: Mapped[Optional[float]] = mapped_column(Float)
+    lactate_1_notes: Mapped[Optional[str]] = mapped_column(String)
+    lactate_2_mmol: Mapped[Optional[float]] = mapped_column(Float)
+    lactate_2_notes: Mapped[Optional[str]] = mapped_column(String)
+    lactate_3_mmol: Mapped[Optional[float]] = mapped_column(Float)
+    lactate_3_notes: Mapped[Optional[str]] = mapped_column(String)
+    lactate_4_mmol: Mapped[Optional[float]] = mapped_column(Float)
+    lactate_4_notes: Mapped[Optional[str]] = mapped_column(String)
+    lactate_5_mmol: Mapped[Optional[float]] = mapped_column(Float)
+    lactate_5_notes: Mapped[Optional[str]] = mapped_column(String)
 
     daily_metrics: Mapped["DailyMetrics"] = relationship(back_populates="activities")
     time_series: Mapped[Optional["ActivityTimeSeries"]] = relationship(back_populates="activity")
@@ -106,6 +116,34 @@ class ActivityTimeSeries(Base):
     stream_data: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
     activity: Mapped["ActivitySummary"] = relationship(back_populates="time_series")
+
+
+class AthleteProfile(Base):
+    """Single-row athlete configuration table (id always = 1)."""
+    __tablename__ = "athlete_profile"
+    __table_args__ = (CheckConstraint("id = 1", name="ck_singleton"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    date_of_birth: Mapped[Optional[date]] = mapped_column(Date)
+    gender: Mapped[Optional[str]] = mapped_column(String(1))
+    height_cm: Mapped[Optional[float]] = mapped_column(Float)
+    weight_kg: Mapped[Optional[float]] = mapped_column(Float)
+    max_hr: Mapped[Optional[int]] = mapped_column(Integer)
+    resting_hr: Mapped[Optional[int]] = mapped_column(Integer)
+    # Lactate thresholds — HR
+    lt1_hr: Mapped[Optional[int]] = mapped_column(Integer)
+    lt2_hr: Mapped[Optional[int]] = mapped_column(Integer)
+    lt1_lthr_ratio: Mapped[Optional[float]] = mapped_column(Float, server_default=text("0.88"))
+    # Lactate thresholds — pace (seconds / km)
+    lt1_pace_sec_km: Mapped[Optional[int]] = mapped_column(Integer)
+    lt2_pace_sec_km: Mapped[Optional[int]] = mapped_column(Integer)
+    # Power
+    ftp_watts: Mapped[Optional[int]] = mapped_column(Integer)
+    # Training targets
+    weekly_zone2_target_mins: Mapped[Optional[int]] = mapped_column(Integer, server_default=text("90"))
+    updated_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=text("NOW()")
+    )
 
 
 async def create_all_tables() -> None:

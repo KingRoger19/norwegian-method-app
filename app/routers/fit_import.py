@@ -1,8 +1,11 @@
 import asyncio
+import shutil
+import tempfile
 from datetime import datetime
+from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.services.fit_importer import ImportResult, run_fit_import
@@ -73,6 +76,39 @@ async def trigger_fit_import(
         )
 
     background_tasks.add_task(_run_and_update, fit_dir)
+    return _state
+
+
+@router.post("/upload", response_model=FitImportStatus, summary="Upload .fit files for immediate import")
+async def upload_fit_files(
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(...),
+) -> FitImportStatus:
+    """
+    Accept one or more .fit files from the browser, save them to a temp directory,
+    and kick off the same background import pipeline. Responds 409 if already running.
+    """
+    global _state  # noqa: PLW0603
+    async with _lock:
+        if _state.status == "running":
+            raise HTTPException(status_code=409, detail="Import already in progress")
+        _state = FitImportStatus(status="running", started_at=datetime.utcnow())
+
+    tmp_dir = tempfile.mkdtemp(prefix="fit_upload_")
+    for upload in files:
+        fname = upload.filename or ""
+        if not fname.lower().endswith(".fit"):
+            continue
+        content = await upload.read()
+        (Path(tmp_dir) / Path(fname).name).write_bytes(content)
+
+    async def _run_then_cleanup(d: str) -> None:
+        try:
+            await _run_and_update(d)
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    background_tasks.add_task(_run_then_cleanup, tmp_dir)
     return _state
 
 

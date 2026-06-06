@@ -4,7 +4,7 @@ from typing import Any
 from fastapi import APIRouter, Query
 from sqlalchemy import func, select, text
 
-from models import ActivitySummary, DailyMetrics, AsyncSessionLocal
+from models import ActivitySummary, AthleteProfile, DailyMetrics, AsyncSessionLocal
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
@@ -26,6 +26,9 @@ async def get_summary() -> dict[str, Any]:
     week_start = today - timedelta(days=today.weekday())  # Monday
 
     async with AsyncSessionLocal() as session:
+        profile = await session.get(AthleteProfile, 1)
+        zone2_target_mins = (profile.weekly_zone2_target_mins if profile and profile.weekly_zone2_target_mins else 90)
+
         # Today's daily metrics (most recent if today is missing)
         today_row = (
             await session.execute(
@@ -44,23 +47,13 @@ async def get_summary() -> dict[str, Any]:
         )
         weekly_z2_secs: int = z2_result.scalar_one()
 
-        # Double-threshold days in current week
-        dt_result = await session.execute(
-            select(func.count(func.distinct(ActivitySummary.date))).where(
-                ActivitySummary.date >= week_start,
-                ActivitySummary.is_double_threshold == True,  # noqa: E712
-            )
-        )
-        double_threshold_days: int = dt_result.scalar_one()
-
     hrv_today = today_row.hrv_today if today_row else None
     hrv_baseline = today_row.hrv_baseline if today_row else None
     acwr = today_row.training_load_ratio if today_row else None
 
     return {
         "weekly_threshold_volume_secs": weekly_z2_secs,
-        "weekly_threshold_target_secs": 5400,  # 90 minutes
-        "double_threshold_days": double_threshold_days,
+        "weekly_threshold_target_secs": zone2_target_mins * 60,
         "hrv_today": hrv_today,
         "hrv_baseline": hrv_baseline,
         "hrv_status": _hrv_status(hrv_today, hrv_baseline),

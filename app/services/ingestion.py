@@ -1,11 +1,12 @@
 import logging
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.services.athlete import effective_max_hr, load_profile
 from app.services.coros_client import (
     ActivityDetailRecord,
     ActivitySummaryRecord,
@@ -127,12 +128,15 @@ async def _upsert_activity(
     summary: ActivitySummaryRecord,
     detail: ActivityDetailRecord,
     lthr_by_date: dict[str, int | None],
+    max_hr: int | None,
 ) -> None:
     zone1, zone2, zone3 = _map_coros_zones_to_norwegian(detail.hr_zones)
 
     pct_of_hr_max = None
-    if summary.avg_hr and settings.user_max_hr:
-        pct_of_hr_max = round((summary.avg_hr / settings.user_max_hr) * 100, 2)
+    if summary.avg_hr and max_hr:
+        pct_of_hr_max = round((summary.avg_hr / max_hr) * 100, 2)
+
+    max_hr = summary.max_hr or detail.max_hr
 
     row = {
         "activity_id": summary.activity_id,
@@ -141,7 +145,7 @@ async def _upsert_activity(
         "duration_seconds": summary.duration_seconds,
         "distance_meters": summary.distance_meters,
         "avg_hr": summary.avg_hr,
-        "max_hr": summary.max_hr,
+        "max_hr": max_hr,
         "pct_of_hr_max": pct_of_hr_max,
         "avg_power": summary.avg_power,
         "normalized_power": summary.normalized_power,
@@ -158,28 +162,12 @@ async def _upsert_activity(
     }
 
     stmt = insert(ActivitySummary).values(**row)
-    stmt = stmt.on_conflict_do_update(
-        index_elements=["activity_id"],
-        set_={k: stmt.excluded[k] for k in row if k != "activity_id"},
-    )
+    update_cols = {k: stmt.excluded[k] for k in row if k not in ("activity_id", "max_hr")}
+    # Only overwrite max_hr when we actually have a value — Coros API often omits it
+    if row.get("max_hr") is not None:
+        update_cols["max_hr"] = stmt.excluded["max_hr"]
+    stmt = stmt.on_conflict_do_update(index_elements=["activity_id"], set_=update_cols)
     await session.execute(stmt)
-
-
-async def _refresh_double_threshold(session: AsyncSession, dates: set[str]) -> None:
-    """Flag is_double_threshold=True for any date with ≥ 2 activities that have zone2_secs > 0."""
-    for d in dates:
-        count = (
-            await session.execute(
-                select(func.count())
-                .select_from(ActivitySummary)
-                .where(ActivitySummary.date == d, ActivitySummary.zone2_secs > 0)
-            )
-        ).scalar_one()
-        await session.execute(
-            update(ActivitySummary)
-            .where(ActivitySummary.date == d)
-            .values(is_double_threshold=(count >= 2))
-        )
 
 
 class SyncResult:
@@ -200,6 +188,8 @@ class SyncResult:
 async def run_sync(weeks: int | None = None) -> SyncResult:
     weeks = weeks or settings.sync_weeks_lookback
     result = SyncResult()
+    profile = await load_profile()
+    max_hr = effective_max_hr(profile)
 
     # coros-mcp list_activities and sync_coros_data expect YYYYMMDD format
     end_day = date.today().strftime("%Y%m%d")
@@ -245,18 +235,13 @@ async def run_sync(weeks: int | None = None) -> SyncResult:
             result.sleep_records_upserted = await _upsert_sleep_records(session, sleep_records)
 
             lthr_by_date = {r.date: r.lthr for r in daily_records}
-            touched_dates: set[date] = set()
 
             for summary, detail in pairs:
                 try:
-                    await _upsert_activity(session, summary, detail, lthr_by_date)
+                    await _upsert_activity(session, summary, detail, lthr_by_date, max_hr)
                     result.activities_upserted += 1
-                    touched_dates.add(_to_date(summary.date))
                 except Exception as exc:
                     result.errors.append(f"upsert_activity {summary.activity_id}: {exc}")
-
-            if touched_dates:
-                await _refresh_double_threshold(session, touched_dates)
 
     for err in result.errors:
         logger.warning("sync error: %s", err)

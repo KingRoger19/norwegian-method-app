@@ -19,12 +19,13 @@ import {
 
 import {
   WeeklyThresholdCard,
-  DoubleThresholdCard,
   HRVCard,
   ACWRCard,
 } from "@/components/KpiCards";
 import ActivityTable from "@/components/ActivityTable";
 import SyncButton from "@/components/SyncButton";
+import UploadFitButton from "@/components/UploadFitButton";
+import NavDrawer from "@/components/NavDrawer";
 
 const IntensityDistributionChart = dynamic(
   () => import("@/components/IntensityDistributionChart"),
@@ -122,7 +123,8 @@ export default function DashboardPage() {
       <header className="border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-30 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <span className="text-lg">🏔</span>
+            <NavDrawer />
+            <span className="text-lg hidden sm:inline">🏔</span>
             <span className="font-semibold text-sm text-zinc-100 hidden sm:inline">
               Norwegian Method
             </span>
@@ -131,6 +133,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-3">
             <SyncButton onSyncComplete={fetchAll} />
+            <UploadFitButton onImportComplete={fetchAll} />
             <button
               onClick={handleSignOut}
               className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1"
@@ -159,9 +162,8 @@ export default function DashboardPage() {
           <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
             Current Week
           </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
             <WeeklyThresholdCard data={summary} />
-            <DoubleThresholdCard data={summary} />
             <HRVCard data={summary} />
             <ACWRCard data={summary} />
           </div>
