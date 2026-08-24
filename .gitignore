@@ -6,3 +6,4 @@ __pycache__/
 dist/
 .env
 exportSportData_*/
+data_bulk_load/

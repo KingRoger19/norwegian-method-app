@@ -1,3 +1,4 @@
+from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
@@ -71,7 +72,29 @@ class LactateUpdate(BaseModel):
     lactate_5_notes: str | None = None
 
 
-# /count must be declared before /{activity_id} so FastAPI doesn't treat "count" as an id
+# /count and /daily-distance must be declared before /{activity_id}
+@router.get("/daily-distance")
+async def daily_distance(
+    months: int = Query(default=13, ge=1, le=120),
+) -> list[dict[str, Any]]:
+    # Snap to first of month so we never return a partial month
+    approx = date.today() - timedelta(days=months * 30)
+    cutoff = approx.replace(day=1)
+    async with AsyncSessionLocal() as session:
+        rows = (
+            await session.execute(
+                select(
+                    ActivitySummary.date,
+                    func.sum(ActivitySummary.distance_meters / 1000).label("km"),
+                )
+                .where(ActivitySummary.date >= cutoff)
+                .group_by(ActivitySummary.date)
+                .order_by(ActivitySummary.date)
+            )
+        ).all()
+    return [{"date": str(r.date), "km": round(r.km, 2)} for r in rows]
+
+
 @router.get("/count")
 async def count_activities() -> dict[str, int]:
     async with AsyncSessionLocal() as session:

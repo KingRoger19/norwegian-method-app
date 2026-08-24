@@ -8,13 +8,21 @@ import {
   getDashboardSummary,
   getIntensityDistribution,
   getHrvLoad,
+  getHrvRolling,
+  getSleepStats,
+  getReadiness,
   listActivities,
   getActivity,
+  getDailyDistance,
   type DashboardSummary,
   type WeeklyZone,
   type DailyMetric,
   type Activity,
   type ActivityDetail,
+  type DailyDistance,
+  type HrvRolling,
+  type SleepStats,
+  type Readiness,
 } from "@/lib/api";
 
 import {
@@ -26,6 +34,24 @@ import ActivityTable from "@/components/ActivityTable";
 import SyncButton from "@/components/SyncButton";
 import UploadFitButton from "@/components/UploadFitButton";
 import NavDrawer from "@/components/NavDrawer";
+import SleepStatsBox from "@/components/SleepStatsBox";
+import ReadinessCard from "@/components/ReadinessCard";
+
+const HRVRollingChart = dynamic(
+  () => import("@/components/HRVRollingChart"),
+  {
+    ssr: false,
+    loading: () => <ChartSkeleton label="7-Day Rolling HRV Metrics" />,
+  }
+);
+
+const KmDrilldownChart = dynamic(
+  () => import("@/components/KmDrilldownChart"),
+  {
+    ssr: false,
+    loading: () => <ChartSkeleton label="Total Distance — Monthly" />,
+  }
+);
 
 const IntensityDistributionChart = dynamic(
   () => import("@/components/IntensityDistributionChart"),
@@ -56,6 +82,10 @@ export default function DashboardPage() {
   const [intensity, setIntensity] = useState<WeeklyZone[]>([]);
   const [hrvLoad, setHrvLoad] = useState<DailyMetric[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [dailyDistance, setDailyDistance] = useState<DailyDistance[]>([]);
+  const [hrvRolling, setHrvRolling] = useState<HrvRolling[]>([]);
+  const [sleepStats, setSleepStats] = useState<SleepStats | null>(null);
+  const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -64,16 +94,24 @@ export default function DashboardPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [s, i, h, a] = await Promise.all([
+      const [s, i, h, a, dd, hr, sl, rd] = await Promise.all([
         getDashboardSummary(),
         getIntensityDistribution(8),
         getHrvLoad(30),
         listActivities(10),
+        getDailyDistance(13),
+        getHrvRolling(120),
+        getSleepStats(),
+        getReadiness(),
       ]);
       setSummary(s);
       setIntensity(i);
       setHrvLoad(h);
       setActivities(a);
+      setDailyDistance(dd);
+      setHrvRolling(hr);
+      setSleepStats(sl);
+      setReadiness(rd);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load data");
     } finally {
@@ -169,6 +207,11 @@ export default function DashboardPage() {
           </div>
         </section>
 
+        {/* ── Daily Readiness ── */}
+        <section>
+          <ReadinessCard data={readiness} />
+        </section>
+
         {/* ── Charts ── */}
         <section>
           <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
@@ -186,6 +229,30 @@ export default function DashboardPage() {
               <ChartSkeleton label="Autonomic Recovery vs Stress" empty />
             )}
           </div>
+          <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 items-stretch">
+            <div className="xl:col-span-3">
+              {hrvRolling.length > 0 ? (
+                <HRVRollingChart data={hrvRolling} />
+              ) : (
+                <ChartSkeleton label="7-Day Rolling HRV Metrics" empty />
+              )}
+            </div>
+            <div className="xl:col-span-1">
+              <SleepStatsBox data={sleepStats} />
+            </div>
+          </div>
+        </section>
+
+        {/* ── Distance Drill-down ── */}
+        <section>
+          <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+            Distance
+          </h2>
+          {dailyDistance.length > 0 ? (
+            <KmDrilldownChart data={dailyDistance} />
+          ) : (
+            <ChartSkeleton label="Total Distance — Monthly" empty />
+          )}
         </section>
 
         {/* ── Activity Table ── */}

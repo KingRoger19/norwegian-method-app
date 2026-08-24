@@ -1,5 +1,64 @@
 # Session Log
 
+## Session 4 — 2026-08-24/25
+
+### What was built
+
+**Backend (FastAPI)**
+- `app/routers/activities.py` — Added `GET /api/activities/daily-distance?months=13`: per-day km totals grouped from `activity_summaries`, cutoff snapped to first of month for complete months
+- `app/routers/dashboard.py` — Added `GET /api/dashboard/hrv-rolling?days=120`: 7-day rolling lnHRV mean (μ₇d), sample SD (σ₇d), CV₇d%; fetches all historical HRV without cutoff so gaps don't break the rolling window
+- `app/routers/dashboard.py` — Added `GET /api/dashboard/sleep-stats`: acute sleep (last night) and 7-day rolling mean in hours, plus deep% and REM% from most recent night; uses `total_duration_mins` since Coros MCP does not return `quality_score`
+- `app/routers/dashboard.py` — Added `GET /api/dashboard/readiness`: daily training readiness flag combining CV₇d with chronic/acute sleep signals; thresholds: CV > 10% = high volatility, Sleep₇d < 7.0 h = chronic debt, Sleep₁d < 85% of Sleep₇d = acute deficit; returns `green/yellow/red` status + action label
+- `fastmcp` upgraded 3.4.1 → 3.4.7 (and 31 other packages including `mcp` 1.27.2 → 1.29.1, `uvicorn` 0.49.0 → 0.52.4)
+
+**Bulk .fit import**
+- 1,124 .fit files moved to `data_bulk_load/exportSportData_444018291325812736_20260824/`
+- Imported via `POST /api/import/fit/trigger?fit_dir=...` (bypasses browser upload entirely)
+- Result: 89 new activities added, 1,035 updated — DB now holds all activities from 2022-06-01 → 2026-08-24
+
+**Frontend (Next.js)**
+- `components/KmDrilldownChart.tsx` — Drill-down bar chart: month → week → day km; always renders last 12 months (zero bars for months with no data so gaps are visible); double-click to drill down, breadcrumb to navigate back; white tooltip text
+- `frontend/app/api/import/fit/upload/route.ts` — Next.js Route Handler that streams multipart bodies directly to FastAPI, bypassing the rewrite proxy body-size limit (fixes 500 on large uploads)
+- `components/HRVRollingChart.tsx` — Composed chart: μ₇d line + ±1σ shaded band (left axis) + CV₇d% dashed line (right axis); stat badges showing current μ₇d, σ₇d, CV₇d with traffic-light colour for CV
+- `components/SleepStatsBox.tsx` — Compact box beside HRV chart: Sleep₁d (last night, colour-coded ≥7.5 h green / ≥6.5 h yellow / red) + Sleep₇d rolling mean + deep% and REM% for last night
+- `components/ReadinessCard.tsx` — Full-width coloured banner between KPI cards and analytics; shows green/yellow/red readiness status with action label and active flag pills
+- `app/dashboard/page.tsx` — Added all new components; analytics section now: Intensity chart + HRV/Load chart | HRV Rolling + Sleep box | Readiness card; distance drill-down chart added below analytics
+
+**Bug fixes**
+- Login 500 was caused by Docker PostgreSQL container not running
+- HRV rolling endpoint previously returned only 2 points due to `cutoff` filtering out the May–June data block; fixed by fetching all HRV history and filtering only the output window
+
+### Current database state
+- **1,124 activities** — 2022-06-01 → 2026-08-24
+- **24 rows with HRV data** — two clusters: May 22–June 6 and Aug 17–24
+- **24 sleep records** — duration/deep/REM populated; `quality_score` always NULL (not provided by Coros MCP)
+- **Athlete profile** still empty — fill in `lt2_hr` and `max_hr` to enable correct zone calculations
+- Schema managed manually — no Alembic
+
+### Key decisions
+- Sleep quality score unavailable from Coros MCP → use `total_duration_mins` (hours) for all sleep metrics; more objective than a proprietary score anyway
+- Readiness thresholds live as named constants in `dashboard.py` (`_CV_VOLATILITY_PCT`, `_SLEEP_BASELINE_HRS`, `_ACUTE_DEFICIT_RATIO`) — tune as you calibrate to your own response patterns
+- For bulk imports always use `POST /api/import/fit/trigger?fit_dir=<path>` rather than the browser upload button, which is only suited for single/small batches
+
+### Known issues / decisions deferred
+- Zone data still 0 for all pre-August activities (Athlete Profile `lt2_hr` not set)
+- HRV data gap June 7 – Aug 16 (no Coros sync during this period)
+- `quality_score` in `sleep_records` always NULL — Coros MCP does not expose it
+
+### Git
+- Commit: see push on master after session 4
+
+### Possible next session topics
+- Fill Athlete Profile (lt2_hr, max_hr) and re-import .fit files to back-populate zones
+- Deployment to dataandmiles.com (Docker + nginx + Oracle VM)
+- Add sport/activity_name column to `activity_summaries`
+- Per-run HR% of max trend chart
+- Weekly threshold volume trend chart
+- Personalise readiness thresholds (consider per-athlete calibration over time)
+
+---
+
+
 ## Session 3 — 2026-06-06
 
 ### What was built

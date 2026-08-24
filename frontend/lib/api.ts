@@ -129,7 +129,51 @@ export const getIntensityDistribution = (weeks = 8) =>
 export const getHrvLoad = (days = 30) =>
   apiFetch<DailyMetric[]>(`/dashboard/hrv-load?days=${days}`);
 
+export interface HrvRolling {
+  date: string;
+  mu_7d: number;
+  sigma_7d: number;
+  cv_7d: number;
+}
+
+export const getHrvRolling = (days = 60) =>
+  apiFetch<HrvRolling[]>(`/dashboard/hrv-rolling?days=${days}`);
+
+export interface SleepStats {
+  sleep_1d_hrs: number | null;
+  sleep_7d_mean_hrs: number | null;
+  deep_pct: number | null;
+  rem_pct: number | null;
+  date_1d: string | null;
+}
+
+export const getSleepStats = () =>
+  apiFetch<SleepStats>("/dashboard/sleep-stats");
+
+export interface Readiness {
+  status: "green" | "yellow" | "red";
+  label: string;
+  action: string;
+  cv_7d: number | null;
+  sleep_1d_hrs: number | null;
+  sleep_7d_mean_hrs: number | null;
+  high_autonomic_volatility: boolean;
+  chronic_sleep_debt: boolean;
+  acute_sleep_deficit: boolean;
+}
+
+export const getReadiness = () =>
+  apiFetch<Readiness>("/dashboard/readiness");
+
 // ── Activities ────────────────────────────────────────────────────────────────
+
+export interface DailyDistance {
+  date: string; // "YYYY-MM-DD"
+  km: number;
+}
+
+export const getDailyDistance = (months = 60) =>
+  apiFetch<DailyDistance[]>(`/activities/daily-distance?months=${months}`);
 
 export const listActivities = (limit = 10, offset = 0) =>
   apiFetch<Activity[]>(`/activities/?limit=${limit}&offset=${offset}`);
