@@ -1,8 +1,10 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Project Overview
 
-A fitness analytics app for Norwegian Method endurance training, planned to be deployed at **dataandmiles.com**. It ingests workout data from COROS devices and computes training-specific metrics around heart-rate zones (LT1/LT2 thresholds).
-
-The project is in early scaffolding stage — the architecture is designed (`Ark_v1.0.drawio`) but most implementation is yet to be built.
+A fitness analytics app for Norwegian Method endurance training, deployed at **dataandmiles.com**. Ingests workout data from COROS devices and computes training-specific metrics around heart-rate zones (LT1/LT2 thresholds).
 
 ## Setup & Running
 
@@ -15,22 +17,17 @@ uv add <pkg>     # add a dependency
 
 Python version: 3.11 (pinned in `.python-version`).
 
-### Start the backend (FastAPI)
+### Start all services
 
 ```bash
-uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+docker compose up -d                                          # PostgreSQL
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000       # FastAPI backend
+cd frontend && npm run dev                                    # Next.js (http://localhost:3000)
 ```
 
-### Start the frontend (Next.js)
+The frontend proxies all `/api/*` requests to `localhost:8000` via Next.js rewrites, **except** `/api/import/fit/upload` which uses a Route Handler (`frontend/app/api/import/fit/upload/route.ts`) to stream multipart bodies directly to FastAPI, bypassing the proxy body-size limit.
 
-```bash
-cd frontend
-npm run dev      # http://localhost:3000
-```
-
-The frontend proxies all `/api/*` requests to `localhost:8000` via Next.js rewrites.
-
-## Planned Architecture
+## Architecture
 
 ```
 [COROS Cloud] ──(Daily Cron / Manual Upload / MCP Server)──> [FastAPI Backend] ──> [Calculations Engine]
@@ -39,126 +36,133 @@ The frontend proxies all `/api/*` requests to `localhost:8000` via Next.js rewri
 [Next.js Frontend] <──(JSON REST API)──────────────────────── [PostgreSQL] <──── [Normalized Tables]
 ```
 
-- **Backend**: FastAPI (Python), task scheduling via APScheduler or Celery
-- **Database**: PostgreSQL with normalized tables for workout/metric data
-- **Frontend**: Next.js (React + TypeScript)
-- **Data source**: COROS wearable DB — ingested via manual upload or MCP Server connector
+- **Backend**: FastAPI (Python) · `app/` · APScheduler cron at 09:00 Europe/Rome
+- **Database**: PostgreSQL in Docker · schema managed manually (no Alembic)
+- **Frontend**: Next.js 16 (App Router) + Tailwind v4 + Recharts v3 · `frontend/`
+- **Data source**: COROS wearable via MCP stdio client (`app/services/coros_client.py`) or manual `.fit` upload
 
 ## Domain: Norwegian Method Training Zones
 
-The core concept is 3-zone intensity distribution based on lactate thresholds:
-- **Zone 1**: Below LT1 (aerobic threshold) — easy aerobic base
-- **Zone 2**: Between LT1 and LT2 (anaerobic threshold) — the Norwegian "threshold" sweet spot
-- **Zone 3**: Above LT2 — high intensity
+| Zone | Range | Description |
+|---|---|---|
+| Zone 1 | < LT1 | Easy aerobic base |
+| Zone 2 | LT1 – LT2 | Threshold sweet spot |
+| Zone 3 | > LT2 | VO2max / high intensity |
 
-## Database Schema: Norwegian Method Training Engine
+LT1 ≈ LT2 × 0.88 (configurable via `athlete_profile`). Zone seconds are computed per-second from HR stream during `.fit` import.
 
-This application utilizes a normalized PostgreSQL database to separate daily high-level health/recovery summaries from high-resolution, second-by-second activity data streams. 
+## Backend Structure (`app/`)
 
-All tables are optimized for calculating running dynamics and intensity distribution metrics specific to the Norwegian Method (Zone 1 / Zone 2 Threshold / Zone 3 VO2Max tracking).
+| Path | Purpose |
+|---|---|
+| `main.py` | FastAPI app, lifespan, CORS, router mounting |
+| `models.py` | SQLAlchemy async ORM for all tables |
+| `config.py` | Pydantic settings from `.env` |
+| `scheduler.py` | APScheduler daily sync job |
+| `routers/auth.py` | `POST /api/auth/login` |
+| `routers/dashboard.py` | summary, intensity-distribution, hrv-load, hrv-rolling, sleep-stats, readiness |
+| `routers/activities.py` | list, detail, count, PATCH lactate, daily-distance |
+| `routers/sync.py` | trigger/status for Coros sync |
+| `routers/fit_import.py` | trigger (directory), upload (multipart), status |
+| `routers/athlete.py` | GET/PUT athlete profile singleton |
+| `services/coros_client.py` | MCP stdio client wrapping `coros-mcp serve` |
+| `services/ingestion.py` | `run_sync()` — pulls daily metrics, sleep, activities from Coros |
+| `services/fit_importer.py` | Batch `.fit` import with zone calculation |
+| `services/athlete.py` | `effective_lt2_hr()`, `effective_lt1_hr()` — profile > `.env` fallback |
 
----
+**Route ordering matters**: in `activities.py`, `/daily-distance` and `/count` must be declared before `/{activity_id}` to avoid the path parameter matching them.
 
-### 1. Table: `daily_metrics`
-Tracks daily autonomic recovery baselines and total stress accumulation. One row per calendar day.
+## Database Schema
 
-| Column Name | Type | Constraints | Description / Norwegian Method Context |
-| :--- | :--- | :--- | :--- |
-| `date` | DATE | PRIMARY KEY | Calendar date of record. |
-| `resting_heart_rate` | INTEGER | Nullable | Waking resting HR; primary baseline recovery marker. |
-| `hrv_baseline` | FLOAT | Nullable | Multi-week rolling HRV baseline. |
-| `hrv_today` | FLOAT | Nullable | Specific waking HRV score for this date. |
-| `training_load` | INTEGER | Nullable | Absolute daily training load index calculated by Coros. |
-| `training_load_ratio` | FLOAT | Nullable | Acute-to-Chronic Workload Ratio (ACWR). |
-| `tired_rate` | FLOAT | Nullable | Internal fatigue index. |
-| `vo2max` | INTEGER | Nullable | Modeled maximal oxygen uptake trend. |
-| `lactate_threshold_hr`| INTEGER | Nullable | Auto-detected second lactate threshold (LT2) in bpm. |
+Schema changes require manual `ALTER TABLE` on the Docker container:
+```bash
+docker exec coros_postgres psql -U groggero -d data_and_miles -c "ALTER TABLE ..."
+```
 
----
+### `daily_metrics`
+`date` (PK) · `resting_heart_rate` · `hrv_baseline` · `hrv_today` · `training_load` · `training_load_ratio` · `tired_rate` · `vo2max` · `lactate_threshold_hr`
 
-### 2. Table: `sleep_records`
-Maintains macro sleep phase quality data. Linked 1:1 with the main daily metrics framework.
+### `sleep_records`
+`date` (PK, FK → daily_metrics) · `total_duration_mins` · `deep_mins` · `rem_mins` · `quality_score`
 
-| Column Name | Type | Constraints | Description |
-| :--- | :--- | :--- | :--- |
-| `date` | DATE | PRIMARY KEY, FK -> `daily_metrics.date` | Maps straight to corresponding morning metric. |
-| `total_duration_mins` | INTEGER | Not Null | Total minutes elapsed asleep. |
-| `deep_mins` | INTEGER | Nullable | Deep sleep duration for physical recovery tracking. |
-| `rem_mins` | INTEGER | Nullable | REM sleep duration for mental recovery tracking. |
-| `quality_score` | INTEGER | Nullable | Coros sleep quality index score (1-100). |
+> `quality_score` is always NULL — Coros MCP does not expose it. All sleep metrics use `total_duration_mins` (converted to hours).
 
----
+### `activity_summaries`
+`activity_id` (PK) · `date` · `start_time` · `duration_seconds` · `distance_meters` · `avg_hr` · `max_hr` · `pct_of_hr_max` · `avg_power` · `normalized_power` · `avg_cadence` · `avg_stride_length` · `ground_time` · `stride_height` · `stride_ratio` · `total_ascent` · `total_descent` · `vertical_speed` · `zone1_secs` · `zone2_secs` · `zone3_secs` · `lactate_1_mmol`…`lactate_5_mmol` · `lactate_1_notes`…`lactate_5_notes`
 
-### 3. Table: `activity_summaries`
-Stores granular metrics for every completed running session, featuring advanced biomechanical variables and calculated threshold durations.
+> `is_double_threshold` was **removed** in Session 3.
 
-| Column Name | Type | Constraints | Description / Calculation Rule |
-| :--- | :--- | :--- | :--- |
-| `activity_id` | VARCHAR(50) | PRIMARY KEY | Unique activity string provided by Coros. |
-| `date` | DATE | INDEX, FK -> `daily_metrics.date` | Links to the calendar tracking date. |
-| `start_time` | TIMESTAMPTZ | Not Null | Precise recording kickoff in UTC. |
-| `duration_seconds` | INTEGER | Not Null | Total active elapsed time. |
-| `distance_meters` | FLOAT | Not Null | Total distance accumulated. |
-| `avg_hr` | INTEGER | Nullable | Mean workout heart rate. |
-| `max_hr` | INTEGER | Nullable | Peak workout heart rate. |
-| `pct_of_hr_max` | FLOAT | Nullable | Computed via `(avg_hr / user_max_hr) * 100`. |
-| `avg_power` | INTEGER | Nullable | Average absolute power in watts. |
-| `normalized_power` | INTEGER | Nullable | Mathematically adjusted power for interval pacing. |
-| `avg_cadence` | FLOAT | Nullable | Steps per minute (Calculated from rpm: `rpm * 2`). |
-| `avg_stride_length` | FLOAT | Nullable | Extracted from `step_length` metrics. |
-| `ground_time` | FLOAT | Nullable | Contact duration derived from `stance_time`. |
-| `stride_height` | FLOAT | Nullable | Vertical displacement from `vertical_oscillation`. |
-| `stride_ratio` | FLOAT | Nullable | Vertical dynamic ratio percentage (`vertical_ratio`). |
-| `total_ascent` | FLOAT | Nullable | Total structural elevation gained. |
-| `total_descent` | FLOAT | Nullable | Total structural elevation lost. |
-| `vertical_speed` | FLOAT | Nullable | Rate of absolute altitude change per minute. |
-| `zone1_secs` | INTEGER | Default 0 | **Calculated:** Total workout seconds spent under LT1. |
-| `zone2_secs` | INTEGER | Default 0 | **Calculated:** Total threshold sweet-spot seconds (LT1 to LT2). |
-| `zone3_secs` | INTEGER | Default 0 | **Calculated:** Total intensity seconds screaming above LT2. |
-| `is_double_threshold` | BOOLEAN | Default False | **Calculated:** Flagged True if date contains $\ge 2$ Zone 2 sessions. |
+### `activity_time_series`
+`activity_id` (PK, FK → activity_summaries) · `stream_data` (JSONB)
 
----
-
-### 4. Table: `activity_time_series`
-Houses dense time-series streams parsed from raw files. Leverages PostgreSQL JSONB arrays for high-performance retrieval without overwhelming relational tracking rows.
-
-| Column Name | Type | Constraints | Description / Payload Format |
-| :--- | :--- | :--- | :--- |
-| `activity_id` | VARCHAR(50) | PRIMARY KEY, FK -> `activity_summaries.activity_id` | Connects single-file stream back to core metadata summary. |
-| `stream_data` | JSONB | Not Null | Structured JSON array storage for second-by-second analytics. |
-
-#### `stream_data` Object Blueprint:
 ```json
 {
-  "timestamps": [1149438956, 1149438957, 1149438958],
-  "heart_rate": [129, 130, 132],
-  "power": [317, 320, 315],
-  "speed": [12.521, 12.550, 12.490],
-  "effort_pace": [4.155, 4.150, 4.162],
-  "lat_long": [[51.24101, 6.78426], [51.24103, 6.78429]]
+  "timestamps": [1149438956, 1149438957],
+  "heart_rate": [129, 130],
+  "power": [317, 320],
+  "speed": [12.521, 12.550],
+  "effort_pace": [4.155, 4.150],
+  "lat_long": [[51.24101, 6.78426]]
 }
 ```
 
-## Planned Dataflow
+### `athlete_profile`
+Singleton row (`id = 1`, enforced by CHECK constraint). `max_hr` · `resting_hr` · `lt1_hr` · `lt2_hr` · `lt1_lthr_ratio` · `lt1_pace_sec_km` · `lt2_pace_sec_km` · `ftp_watts` · `weekly_zone2_target_mins` · `date_of_birth` · `gender` · `height_cm` · `weight_kg` · `updated_at`
 
+> Fill in `lt2_hr` and `max_hr` before running `.fit` imports to get correct zone calculations.
+
+## Frontend Structure (`frontend/`)
+
+| Path | Purpose |
+|---|---|
+| `app/layout.tsx` | Root layout with `suppressHydrationWarning` |
+| `app/login/page.tsx` | Auth card, credentials from `.env.local` |
+| `app/dashboard/page.tsx` | Main dashboard — all data fetched in parallel via `Promise.all` |
+| `app/advanced-metrics/page.tsx` | Paginated activity table with inline lactate entry |
+| `app/athlete-settings/page.tsx` | Athlete profile settings (5 grouped cards) |
+| `app/api/import/fit/upload/route.ts` | Route Handler streaming large `.fit` uploads to FastAPI |
+| `lib/api.ts` | All typed fetch functions and interfaces |
+| `components/KpiCards.tsx` | WeeklyThresholdCard, HRVCard, ACWRCard |
+| `components/KmDrilldownChart.tsx` | Month → week → day distance drill-down |
+| `components/HRVRollingChart.tsx` | μ₇d ±1σ band + CV₇d%, stat badges |
+| `components/SleepStatsBox.tsx` | Sleep₁d and Sleep₇d mean, deep%/REM% |
+| `components/ReadinessCard.tsx` | Green/yellow/red readiness banner |
+| `components/IntensityDistributionChart.tsx` | Z1/Z2/Z3 stacked bars |
+| `components/HRVLoadChart.tsx` | HRV + training load dual-axis |
+| `components/ActivityTable.tsx` | Last N runs, clickable rows |
+| `components/ActivityDetailModal.tsx` | Per-second HR/pace/power charts from JSONB |
+| `components/NavDrawer.tsx` | Hamburger slide-in with Dashboard / Advanced Metrics / Athlete Profile |
+| `components/SyncButton.tsx` | Triggers Coros sync, polls status |
+| `components/UploadFitButton.tsx` | File picker for `.fit` uploads, polls import status |
+
+All Recharts components are loaded via `dynamic(..., { ssr: false })`.
+
+## Key Calculations
+
+### HRV Rolling Metrics (backend: `dashboard.py`)
+Computed over the last 7 available HRV data points (gaps are skipped — not calendar days):
+- **μ₇d** = mean of ln(HRV) over 7 points
+- **σ₇d** = sample SD (÷ 6) of ln(HRV)
+- **CV₇d** = (σ₇d / μ₇d) × 100 %
+
+### Daily Readiness
+Thresholds (constants in `dashboard.py`): `_CV_VOLATILITY_PCT = 10.0`, `_SLEEP_BASELINE_HRS = 7.0`, `_ACUTE_DEFICIT_RATIO = 0.85`
+- **Red**: CV₇d > 10% AND Sleep₇d < 7h → cap LT2 volume
+- **Yellow**: Sleep₁d < 85% of Sleep₇d → proceed LT1, monitor HR lag
+- **Green**: all clear → full double-threshold execution
+
+## Bulk .fit Import
+
+For large historical imports use the directory trigger, not the browser button:
+```bash
+curl -X POST "http://localhost:8000/api/import/fit/trigger?fit_dir=/absolute/path/to/fit/files"
+curl http://localhost:8000/api/import/fit/status   # poll until complete
 ```
-[ Coros API / MCP ] ────► [ Phase 1: High-Level Sync ] ────► Saves to: daily_metrics
-                                                                     sleep_records
-                                                                     activity_summaries (metadata)
-                                                                            │
-[ Raw .fit File ]   ────► [ Phase 2: High-Res Parsing ] ◄───────────────────┘
-                            (Calculates Z1/Z2/Z3 & Double Thresholds)
-                                       │
-                                       ▼
-                        Saves to: activity_time_series (JSONB)
-                                  Updates activity_summaries (Calculated Fields)
-```
 
-### Key Metrics to Implement
-- **Weekly Threshold Volume**: Total km or time strictly in Zone 2 (LT1–LT2)
-- **Autonomic Recovery Score**: 7-day rolling waking HRV overlaid against total threshold volume to detect nervous system overload
+`data_bulk_load/` is gitignored (contains personal `.fit` files).
 
-### Key Graphs to Implement
-- **Intensity Distribution Histogram**: 3-zone pyramidal vs. polarized chart (time in Zone 1 / Zone 2 / Zone 3)
-- **Cardiovascular Drift Tracker**: Scatter plot of HR vs. pace over long steady workouts to assess aerobic base quality
-- **Per-run HR% of Max**: Each run's average HR as a percentage of HR max
+## Environment & Credentials
+
+- `.env` — DB credentials (gitignored)
+- `frontend/.env.local` — Coros login credentials for form prefill (gitignored)
+- Never hardcode credentials in committed files
