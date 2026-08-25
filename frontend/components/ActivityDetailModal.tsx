@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   ComposedChart,
   Line,
@@ -13,6 +14,8 @@ import {
 } from "recharts";
 import { ActivityDetail } from "@/lib/api";
 import { fmtDuration, fmtShortDate, speedToPace, downsample } from "@/lib/utils";
+
+const ActivityMap = dynamic(() => import("@/components/ActivityMap"), { ssr: false });
 
 interface Props {
   activity: ActivityDetail;
@@ -303,6 +306,22 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
               )}
             </>
           )}
+
+          {/* Route map */}
+          {(() => {
+            const coords = activity.stream_data?.lat_long?.filter(
+              (p): p is [number, number] => Array.isArray(p) && p.length === 2
+            ) ?? [];
+            if (coords.length < 2) return null;
+            return (
+              <div>
+                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+                  Route
+                </p>
+                <ActivityMap latLong={coords} />
+              </div>
+            );
+          })()}
 
           {/* Biomechanics if available */}
           {(activity.avg_cadence || activity.ground_time || activity.stride_height) && (

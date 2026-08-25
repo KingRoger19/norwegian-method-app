@@ -82,6 +82,7 @@ export interface StreamData {
   effort_pace?: (number | null)[];
   altitude?: (number | null)[];
   cadence?: (number | null)[];
+  lat_long?: ([number, number] | null)[];
 }
 
 export interface ActivityDetail extends Activity {
