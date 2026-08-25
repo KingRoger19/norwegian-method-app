@@ -130,6 +130,16 @@ export const getIntensityDistribution = (weeks = 8) =>
 export const getHrvLoad = (days = 30) =>
   apiFetch<DailyMetric[]>(`/dashboard/hrv-load?days=${days}`);
 
+export interface Zone2Week {
+  week_start: string;
+  zone2_mins: number;
+  target_mins: number;
+  is_current: boolean;
+}
+
+export const getZone2Trend = (weeks = 12) =>
+  apiFetch<Zone2Week[]>(`/dashboard/zone2-trend?weeks=${weeks}`);
+
 export interface HrvRolling {
   date: string;
   mu_7d: number;

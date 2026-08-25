@@ -98,6 +98,50 @@ async def get_intensity_distribution(
     ]
 
 
+@router.get("/zone2-trend")
+async def get_zone2_trend(
+    weeks: int = Query(default=12, ge=4, le=52),
+) -> list[dict[str, Any]]:
+    """Weekly Zone 2 minutes for the last `weeks` weeks, with gaps filled as 0.
+    Includes target_mins from athlete profile and is_current flag for the live week."""
+    today = date.today()
+    current_week_start = today - timedelta(days=today.weekday())
+
+    async with AsyncSessionLocal() as session:
+        profile = await session.get(AthleteProfile, 1)
+        target_mins = int(profile.weekly_zone2_target_mins) if profile and profile.weekly_zone2_target_mins else 0
+
+        rows = (
+            await session.execute(
+                text("""
+                    SELECT
+                        gs.week_start::date             AS week_start,
+                        COALESCE(SUM(a.zone2_secs), 0) / 60.0 AS zone2_mins
+                    FROM generate_series(
+                        date_trunc('week', CURRENT_DATE - (:weeks - 1) * interval '1 week'),
+                        date_trunc('week', CURRENT_DATE),
+                        interval '1 week'
+                    ) AS gs(week_start)
+                    LEFT JOIN activity_summaries a
+                        ON date_trunc('week', a.date)::date = gs.week_start
+                    GROUP BY gs.week_start
+                    ORDER BY gs.week_start
+                """),
+                {"weeks": weeks},
+            )
+        ).fetchall()
+
+    return [
+        {
+            "week_start": row[0].isoformat(),
+            "zone2_mins": round(float(row[1]), 1),
+            "target_mins": target_mins,
+            "is_current": row[0] == current_week_start,
+        }
+        for row in rows
+    ]
+
+
 @router.get("/hrv-load")
 async def get_hrv_load(
     days: int = Query(default=30, ge=7, le=90),

@@ -11,6 +11,7 @@ import {
   getHrvRolling,
   getSleepStats,
   getReadiness,
+  getZone2Trend,
   listActivities,
   getActivitiesCount,
   getActivity,
@@ -24,6 +25,7 @@ import {
   type HrvRolling,
   type SleepStats,
   type Readiness,
+  type Zone2Week,
 } from "@/lib/api";
 
 const PAGE_SIZE = 10;
@@ -45,6 +47,11 @@ import UploadFitButton from "@/components/UploadFitButton";
 import NavDrawer from "@/components/NavDrawer";
 import SleepStatsBox from "@/components/SleepStatsBox";
 import ReadinessCard from "@/components/ReadinessCard";
+
+const Zone2TrendChart = dynamic(
+  () => import("@/components/Zone2TrendChart"),
+  { ssr: false, loading: () => <ChartSkeleton label="Weekly Zone 2 Volume" /> }
+);
 
 const HRVRollingChart = dynamic(
   () => import("@/components/HRVRollingChart"),
@@ -97,6 +104,7 @@ export default function DashboardPage() {
   const [hrvRolling, setHrvRolling] = useState<HrvRolling[]>([]);
   const [sleepStats, setSleepStats] = useState<SleepStats | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const [zone2Trend, setZone2Trend] = useState<Zone2Week[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -115,7 +123,7 @@ export default function DashboardPage() {
 
   const fetchAll = useCallback(async () => {
     try {
-      const [s, i, h, dd, hr, sl, rd] = await Promise.all([
+      const [s, i, h, dd, hr, sl, rd, z2] = await Promise.all([
         getDashboardSummary(),
         getIntensityDistribution(8),
         getHrvLoad(30),
@@ -123,6 +131,7 @@ export default function DashboardPage() {
         getHrvRolling(120),
         getSleepStats(),
         getReadiness(),
+        getZone2Trend(12),
       ]);
       setSummary(s);
       setIntensity(i);
@@ -131,6 +140,7 @@ export default function DashboardPage() {
       setHrvRolling(hr);
       setSleepStats(sl);
       setReadiness(rd);
+      setZone2Trend(z2);
       await fetchActivities(0);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load data");
@@ -266,6 +276,11 @@ export default function DashboardPage() {
               <SleepStatsBox data={sleepStats} />
             </div>
           </div>
+          {zone2Trend.length > 0 ? (
+            <Zone2TrendChart data={zone2Trend} />
+          ) : (
+            <ChartSkeleton label="Weekly Zone 2 Volume" empty />
+          )}
         </section>
 
         {/* ── Distance Drill-down ── */}
