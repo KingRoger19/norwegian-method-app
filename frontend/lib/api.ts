@@ -176,11 +176,15 @@ export interface DailyDistance {
 export const getDailyDistance = (months = 60) =>
   apiFetch<DailyDistance[]>(`/activities/daily-distance?months=${months}`);
 
-export const listActivities = (limit = 10, offset = 0) =>
-  apiFetch<Activity[]>(`/activities/?limit=${limit}&offset=${offset}`);
+export const listActivities = (limit = 10, offset = 0, since?: string) =>
+  apiFetch<Activity[]>(
+    `/activities/?limit=${limit}&offset=${offset}${since ? `&since=${since}` : ""}`
+  );
 
-export const getActivitiesCount = () =>
-  apiFetch<{ total: number }>("/activities/count");
+export const getActivitiesCount = (since?: string) =>
+  apiFetch<{ total: number }>(
+    `/activities/count${since ? `?since=${since}` : ""}`
+  );
 
 export const getActivity = (id: string) =>
   apiFetch<ActivityDetail>(`/activities/${id}`);

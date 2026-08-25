@@ -96,11 +96,14 @@ async def daily_distance(
 
 
 @router.get("/count")
-async def count_activities() -> dict[str, int]:
+async def count_activities(
+    since: date | None = Query(default=None),
+) -> dict[str, int]:
     async with AsyncSessionLocal() as session:
-        total = (
-            await session.execute(select(func.count()).select_from(ActivitySummary))
-        ).scalar_one()
+        q = select(func.count()).select_from(ActivitySummary)
+        if since:
+            q = q.where(ActivitySummary.date >= since)
+        total = (await session.execute(q)).scalar_one()
     return {"total": total}
 
 
@@ -108,16 +111,18 @@ async def count_activities() -> dict[str, int]:
 async def list_activities(
     limit: int = Query(default=10, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
+    since: date | None = Query(default=None),
 ) -> list[dict[str, Any]]:
     async with AsyncSessionLocal() as session:
-        rows = (
-            await session.execute(
-                select(ActivitySummary)
-                .order_by(ActivitySummary.date.desc(), ActivitySummary.start_time.desc())
-                .limit(limit)
-                .offset(offset)
-            )
-        ).scalars().all()
+        q = (
+            select(ActivitySummary)
+            .order_by(ActivitySummary.date.desc(), ActivitySummary.start_time.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        if since:
+            q = q.where(ActivitySummary.date >= since)
+        rows = (await session.execute(q)).scalars().all()
     return [_summary_to_dict(a) for a in rows]
 
 

@@ -12,6 +12,7 @@ import {
   getSleepStats,
   getReadiness,
   listActivities,
+  getActivitiesCount,
   getActivity,
   getDailyDistance,
   type DashboardSummary,
@@ -24,6 +25,14 @@ import {
   type SleepStats,
   type Readiness,
 } from "@/lib/api";
+
+const PAGE_SIZE = 10;
+
+function sinceDate(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 4);
+  return d.toISOString().slice(0, 10);
+}
 
 import {
   WeeklyThresholdCard,
@@ -82,6 +91,8 @@ export default function DashboardPage() {
   const [intensity, setIntensity] = useState<WeeklyZone[]>([]);
   const [hrvLoad, setHrvLoad] = useState<DailyMetric[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [activityTotal, setActivityTotal] = useState(0);
+  const [activityPage, setActivityPage] = useState(0);
   const [dailyDistance, setDailyDistance] = useState<DailyDistance[]>([]);
   const [hrvRolling, setHrvRolling] = useState<HrvRolling[]>([]);
   const [sleepStats, setSleepStats] = useState<SleepStats | null>(null);
@@ -92,13 +103,22 @@ export default function DashboardPage() {
   const [selectedActivity, setSelectedActivity] = useState<ActivityDetail | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
 
+  const fetchActivities = useCallback(async (page: number) => {
+    const since = sinceDate();
+    const [items, { total }] = await Promise.all([
+      listActivities(PAGE_SIZE, page * PAGE_SIZE, since),
+      getActivitiesCount(since),
+    ]);
+    setActivities(items);
+    setActivityTotal(total);
+  }, []);
+
   const fetchAll = useCallback(async () => {
     try {
-      const [s, i, h, a, dd, hr, sl, rd] = await Promise.all([
+      const [s, i, h, dd, hr, sl, rd] = await Promise.all([
         getDashboardSummary(),
         getIntensityDistribution(8),
         getHrvLoad(30),
-        listActivities(10),
         getDailyDistance(13),
         getHrvRolling(120),
         getSleepStats(),
@@ -107,17 +127,17 @@ export default function DashboardPage() {
       setSummary(s);
       setIntensity(i);
       setHrvLoad(h);
-      setActivities(a);
       setDailyDistance(dd);
       setHrvRolling(hr);
       setSleepStats(sl);
       setReadiness(rd);
+      await fetchActivities(0);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load data");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchActivities]);
 
   useEffect(() => {
     if (!localStorage.getItem(TOKEN_KEY)) {
@@ -126,6 +146,11 @@ export default function DashboardPage() {
     }
     fetchAll();
   }, [router, fetchAll]);
+
+  useEffect(() => {
+    if (activityPage === 0) return; // page 0 is loaded by fetchAll
+    fetchActivities(activityPage);
+  }, [activityPage, fetchActivities]);
 
   async function handleSelectActivity(id: string) {
     setModalLoading(true);
@@ -260,6 +285,11 @@ export default function DashboardPage() {
           <ActivityTable
             activities={activities}
             onSelect={handleSelectActivity}
+            page={activityPage}
+            totalPages={Math.ceil(activityTotal / PAGE_SIZE)}
+            total={activityTotal}
+            onPrev={() => setActivityPage((p) => Math.max(0, p - 1))}
+            onNext={() => setActivityPage((p) => p + 1)}
           />
         </section>
       </main>
