@@ -6,7 +6,10 @@ import NavDrawer from "@/components/NavDrawer";
 import {
   getAthleteProfile,
   updateAthleteProfile,
+  triggerRecalculate,
+  getRecalculateStatus,
   type AthleteProfile,
+  type RecalcStatus,
 } from "@/lib/api";
 
 const TOKEN_KEY = "nm_auth_token";
@@ -224,6 +227,8 @@ export default function AthleteSettingsPage() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [recalc, setRecalc] = useState<RecalcStatus | null>(null);
+  const [recalcPolling, setRecalcPolling] = useState(false);
 
   const set = (key: keyof Form) => (val: string) =>
     setForm((prev) => ({ ...prev, [key]: val }));
@@ -246,6 +251,29 @@ export default function AthleteSettingsPage() {
     } catch {
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 4000);
+    }
+  }
+
+  // Poll recalculate status while running
+  useEffect(() => {
+    if (!recalcPolling) return;
+    const interval = setInterval(async () => {
+      try {
+        const s = await getRecalculateStatus();
+        setRecalc(s);
+        if (s.status !== "running") setRecalcPolling(false);
+      } catch { setRecalcPolling(false); }
+    }, 1500);
+    return () => clearInterval(interval);
+  }, [recalcPolling]);
+
+  async function handleRecalculate() {
+    try {
+      const s = await triggerRecalculate();
+      setRecalc(s);
+      setRecalcPolling(true);
+    } catch (err: unknown) {
+      setRecalc({ status: "failed", started_at: null, completed_at: null, total: 0, updated: 0, skipped: 0, errors: [err instanceof Error ? err.message : "Unknown error"] });
     }
   }
 
@@ -463,6 +491,59 @@ export default function AthleteSettingsPage() {
               placeholder="90"
             />
           </Field>
+        </SectionCard>
+
+        {/* ── Recalculate ── */}
+        <SectionCard
+          color="bg-teal-950 text-teal-400"
+          title="Recalculate Metrics"
+          subtitle="Re-derive zones and HR% from stored streams using current thresholds"
+          icon={
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0v2.43l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
+            </svg>
+          }
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              After updating LT2, LT1, or Max HR above, use this to retroactively update
+              Zone 1 / Zone 2 / Zone 3 seconds and HR% for all {recalc?.total ? `${recalc.total} ` : ""}activities
+              that have a stored HR stream — no need to re-upload .fit files.
+            </p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={handleRecalculate}
+                disabled={recalc?.status === "running"}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+                  recalc?.status === "running"
+                    ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                    : "bg-teal-700 hover:bg-teal-600 text-white"
+                }`}
+              >
+                {recalc?.status === "running" && (
+                  <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                )}
+                {recalc?.status === "running" ? "Recalculating…" : "Recalculate now"}
+              </button>
+
+              {recalc && recalc.status !== "idle" && (
+                <div className="text-xs text-zinc-400 space-y-0.5">
+                  {recalc.status === "running" && (
+                    <p className="text-zinc-400">Processing activities…</p>
+                  )}
+                  {(recalc.status === "success" || recalc.status === "partial") && (
+                    <p className="text-green-400">
+                      Done — {recalc.updated} / {recalc.total} activities updated
+                      {recalc.skipped > 0 && `, ${recalc.skipped} skipped`}
+                    </p>
+                  )}
+                  {recalc.status === "failed" && (
+                    <p className="text-red-400">{recalc.errors[0] ?? "Failed"}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </SectionCard>
 
         {/* Save */}

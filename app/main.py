@@ -8,6 +8,7 @@ from app.routers.athlete import router as athlete_router
 from app.routers.auth import router as auth_router
 from app.routers.dashboard import router as dashboard_router
 from app.routers.fit_import import router as fit_import_router
+from app.routers.recalculate import router as recalculate_router
 from app.routers.sync import router as sync_router
 from app.scheduler import scheduler, setup_scheduler
 
@@ -41,3 +42,4 @@ app.include_router(dashboard_router)
 app.include_router(activities_router)
 app.include_router(sync_router)
 app.include_router(fit_import_router)
+app.include_router(recalculate_router)

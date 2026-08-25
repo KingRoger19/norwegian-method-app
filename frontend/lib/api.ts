@@ -232,6 +232,24 @@ export const updateAthleteProfile = (data: Partial<AthleteProfile>) =>
     body: JSON.stringify(data),
   });
 
+// ── Recalculate ───────────────────────────────────────────────────────────────
+
+export interface RecalcStatus {
+  status: "idle" | "running" | "success" | "partial" | "failed";
+  started_at: string | null;
+  completed_at: string | null;
+  total: number;
+  updated: number;
+  skipped: number;
+  errors: string[];
+}
+
+export const triggerRecalculate = () =>
+  apiFetch<RecalcStatus>("/recalculate/trigger", { method: "POST" });
+
+export const getRecalculateStatus = () =>
+  apiFetch<RecalcStatus>("/recalculate/status");
+
 // ── Lactate ───────────────────────────────────────────────────────────────────
 
 export async function updateActivityLactate(
