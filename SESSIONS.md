@@ -1,5 +1,68 @@
 # Session Log
 
+## Session 5 — 2026-08-25
+
+### What was built
+
+**Multi-user authentication**
+- `app/config.py` — Added `COACH_USERNAME` / `COACH_PASSWORD` settings
+- `app/routers/auth.py` — `_valid_credentials()` checks all configured users; empty-string guard prevents unconfigured slots from matching; coach account (`fmarello`) added to `.env` (gitignored)
+
+**Recalculate Metrics (no re-import needed)**
+- `app/services/recalculator.py` — Reads stored JSONB HR streams from `activity_time_series`, applies current Athlete Profile thresholds (lt2_hr, lt1_ratio, max_hr), batch-updates `zone1_secs` / `zone2_secs` / `zone3_secs` / `pct_of_hr_max` in `activity_summaries`; 100-activity batches in a single transaction each
+- `app/routers/recalculate.py` — `POST /api/recalculate/trigger` + `GET /api/recalculate/status` (same pattern as fit_import)
+- `app/main.py` — Mounted `recalculate_router`
+- `frontend/lib/api.ts` — `RecalcStatus` type + `triggerRecalculate` / `getRecalculateStatus`
+- `frontend/app/athlete-settings/page.tsx` — New "Recalculate Metrics" section card with teal button, polling progress display, and result summary (updated / skipped counts)
+- **Used immediately**: set max_hr=190, lt2_hr=175 in Athlete Profile → clicked Recalculate → all 1,124 activities now have correct zone data
+
+**Activity route map**
+- `npm install leaflet @types/leaflet` added to frontend
+- `frontend/components/ActivityMap.tsx` — Leaflet map initialised in `useEffect` (avoids SSR); CartoDB dark tile layer (no API key); green polyline for route, green start dot, red finish dot; scroll-wheel zoom disabled; cleans up on modal close
+- `frontend/components/ActivityDetailModal.tsx` — Added `ActivityMap` (via `dynamic` with `ssr:false`) below power chart; silently skipped when `lat_long` has fewer than 2 valid points
+- `frontend/lib/api.ts` — Added `lat_long?: ([number, number] | null)[]` to `StreamData`
+
+**Paginated dashboard activity table**
+- `app/routers/activities.py` — Added optional `since: date` query param to `GET /api/activities/` and `GET /api/activities/count` for date filtering
+- `frontend/lib/api.ts` — `listActivities` and `getActivitiesCount` accept optional `since` string
+- `frontend/components/ActivityTable.tsx` — Added `page`, `totalPages`, `total`, `onPrev`, `onNext` props; prev/next footer; "Page X of N" header badge; subtitle shows "Last 4 months · N activities"
+- `frontend/app/dashboard/page.tsx` — `sinceDate()` helper (4 months back); `fetchActivities(page)` separated from `fetchAll` so page changes only re-fetch the table; `activityPage` / `activityTotal` state
+
+**Weekly Zone 2 volume trend chart**
+- `app/routers/dashboard.py` — `GET /api/dashboard/zone2-trend?weeks=12`: uses PostgreSQL `generate_series` to fill all 12 weeks including zero weeks; returns `target_mins` from athlete profile and `is_current` flag for the live partial week
+- `frontend/components/Zone2TrendChart.tsx` — Amber bar chart; all 12 weeks always shown; dashed grey reference line at weekly target; current-week bar at 35% opacity; tooltip shows ±delta vs target for completed weeks
+- `frontend/app/dashboard/page.tsx` — `Zone2TrendChart` added as full-width row at bottom of Analytics section; `getZone2Trend(12)` fetched in parallel with other dashboard data
+
+**Oracle Cloud VM setup (in progress)**
+- Selected Frankfurt region, Ampere A1.Flex shape (1 OCPU / 6 GB RAM), on-demand capacity
+- SSH key pair generated locally (`~/.ssh/id_ed25519`)
+- PAYG billing upgrade initiated (awaiting approval) to resolve A1 capacity quota
+- Deployment plan confirmed: single VPS + nginx + Let's Encrypt + Docker Compose; blog as MDX pages in Next.js at `/blog`
+
+### Current database state
+- **1,124 activities** — 2022-06-01 → 2026-08-25; zone data now correct for all activities with HR streams
+- **Athlete profile**: max_hr=190, lt2_hr=175 set; zones recalculated
+- **24 HRV rows** — two clusters; 24 sleep records
+- `quality_score` always NULL (Coros MCP does not expose it)
+
+### Key decisions
+- Recalculator reads stored JSONB streams rather than re-parsing .fit files — avoids needing the original files and runs in seconds vs minutes
+- Leaflet CSS loaded dynamically in `useEffect` via a `<link>` injection (avoids Next.js SSR issues with Leaflet's DOM assumptions)
+- `since` date filter on activities list keeps dashboard table scoped to 4 months without touching Advanced Metrics page
+- `generate_series` in PostgreSQL fills zero-activity weeks so the Zone 2 trend chart never has silent gaps
+
+### Git
+- Commits: `d56591e` (multi-user auth), `a0d9a25` (recalculate), `a152fd5` (map), `e64d9f4` (pagination), `02deddf` (Zone 2 trend)
+
+### Possible next session topics
+- Complete Oracle Cloud VM provisioning and deploy to dataandmiles.com
+- Add `/blog` MDX section to Next.js
+- Per-run HR% of max trend chart
+- Sport/activity type column in `activity_summaries`
+- Personalised readiness thresholds
+
+---
+
 ## Session 4 — 2026-08-24/25
 
 ### What was built

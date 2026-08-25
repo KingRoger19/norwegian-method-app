@@ -59,15 +59,17 @@ LT1 ≈ LT2 × 0.88 (configurable via `athlete_profile`). Zone seconds are compu
 | `models.py` | SQLAlchemy async ORM for all tables |
 | `config.py` | Pydantic settings from `.env` |
 | `scheduler.py` | APScheduler daily sync job |
-| `routers/auth.py` | `POST /api/auth/login` |
-| `routers/dashboard.py` | summary, intensity-distribution, hrv-load, hrv-rolling, sleep-stats, readiness |
-| `routers/activities.py` | list, detail, count, PATCH lactate, daily-distance |
+| `routers/auth.py` | `POST /api/auth/login` — multi-user, checks owner + coach credentials from `.env` |
+| `routers/dashboard.py` | summary, intensity-distribution, hrv-load, hrv-rolling, sleep-stats, readiness, zone2-trend |
+| `routers/activities.py` | list (optional `since` filter), detail, count, PATCH lactate, daily-distance |
 | `routers/sync.py` | trigger/status for Coros sync |
 | `routers/fit_import.py` | trigger (directory), upload (multipart), status |
+| `routers/recalculate.py` | trigger/status — re-derives zones & pct_of_hr_max from stored JSONB streams |
 | `routers/athlete.py` | GET/PUT athlete profile singleton |
 | `services/coros_client.py` | MCP stdio client wrapping `coros-mcp serve` |
 | `services/ingestion.py` | `run_sync()` — pulls daily metrics, sleep, activities from Coros |
 | `services/fit_importer.py` | Batch `.fit` import with zone calculation |
+| `services/recalculator.py` | `run_recalculate()` — reads `activity_time_series.stream_data`, applies current profile thresholds, batch-updates `activity_summaries` |
 | `services/athlete.py` | `effective_lt2_hr()`, `effective_lt1_hr()` — profile > `.env` fallback |
 
 **Route ordering matters**: in `activities.py`, `/daily-distance` and `/count` must be declared before `/{activity_id}` to avoid the path parameter matching them.
@@ -127,15 +129,21 @@ Singleton row (`id = 1`, enforced by CHECK constraint). `max_hr` · `resting_hr`
 | `components/HRVRollingChart.tsx` | μ₇d ±1σ band + CV₇d%, stat badges |
 | `components/SleepStatsBox.tsx` | Sleep₁d and Sleep₇d mean, deep%/REM% |
 | `components/ReadinessCard.tsx` | Green/yellow/red readiness banner |
+| `components/Zone2TrendChart.tsx` | 12-week Z2 volume bars, target reference line, faded current week |
 | `components/IntensityDistributionChart.tsx` | Z1/Z2/Z3 stacked bars |
 | `components/HRVLoadChart.tsx` | HRV + training load dual-axis |
-| `components/ActivityTable.tsx` | Last N runs, clickable rows |
-| `components/ActivityDetailModal.tsx` | Per-second HR/pace/power charts from JSONB |
+| `components/ActivityTable.tsx` | Paginated activity list (page/totalPages/onPrev/onNext props) |
+| `components/ActivityDetailModal.tsx` | Per-second HR/pace/power charts + GPS route map from JSONB |
+| `components/ActivityMap.tsx` | Leaflet map with CartoDB dark tiles; green polyline, start/finish dots |
 | `components/NavDrawer.tsx` | Hamburger slide-in with Dashboard / Advanced Metrics / Athlete Profile |
 | `components/SyncButton.tsx` | Triggers Coros sync, polls status |
 | `components/UploadFitButton.tsx` | File picker for `.fit` uploads, polls import status |
 
 All Recharts components are loaded via `dynamic(..., { ssr: false })`.
+
+## Multi-user Auth
+
+Users are defined in `.env` as `COROS_EMAIL`/`COROS_PASSWORD` (owner) and `COACH_USERNAME`/`COACH_PASSWORD`. The `_valid_credentials()` helper in `auth.py` checks all pairs; an empty-string pair is never accepted. To add more users, extend `config.py` with another pair of settings.
 
 ## Key Calculations
 
