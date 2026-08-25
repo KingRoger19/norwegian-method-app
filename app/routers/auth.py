@@ -16,9 +16,17 @@ class LoginResponse(BaseModel):
     token: str
 
 
+def _valid_credentials(username: str, password: str) -> bool:
+    users = [
+        (settings.coros_email, settings.coros_password),
+        (settings.coach_username, settings.coach_password),
+    ]
+    return any(u and p and username == u and password == p for u, p in users)
+
+
 @router.post("/login", response_model=LoginResponse)
 async def login(body: LoginRequest) -> LoginResponse:
-    if body.email == settings.coros_email and body.password == settings.coros_password:
+    if _valid_credentials(body.email, body.password):
         return LoginResponse(success=True, token="local-dashboard-session")
     raise HTTPException(status_code=401, detail="Invalid credentials")
 

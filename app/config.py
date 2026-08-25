@@ -26,5 +26,9 @@ class Settings(BaseSettings):
     coros_email: str = ""
     coros_password: str = ""
 
+    # Additional users — username:password pairs (coach, guest, etc.)
+    coach_username: str = ""
+    coach_password: str = ""
+
 
 settings = Settings()
