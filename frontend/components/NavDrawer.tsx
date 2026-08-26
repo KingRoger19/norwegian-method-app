@@ -89,15 +89,16 @@ export default function NavDrawer() {
 
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 z-40 bg-black/75 backdrop-blur-sm transition-opacity duration-200 ${
+        className={`fixed inset-0 z-40 transition-opacity duration-200 ${
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
+        style={{ backgroundColor: "rgba(0,0,0,0.55)" }}
         onClick={() => setOpen(false)}
       />
 
-      {/* Drawer — full-width on mobile, 240px on sm+ */}
+      {/* Drawer */}
       <div
-        className={`fixed left-0 top-0 bottom-0 w-full sm:w-60 bg-zinc-900 border-r border-zinc-800 z-50 flex flex-col transition-transform duration-200 ease-out ${
+        className={`fixed left-0 top-0 bottom-0 w-full sm:w-60 bg-zinc-900 border-r border-zinc-800 z-50 flex flex-col transition-transform duration-200 ease-out shadow-2xl ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
