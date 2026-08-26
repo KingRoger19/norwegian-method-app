@@ -54,6 +54,9 @@ A fitness analytics app for Norwegian Method endurance training, planned for dep
 | `GET /api/import/fit/status` | Import job progress |
 | `POST /api/recalculate/trigger` | Recalculate zones & HR% from stored streams |
 | `GET /api/recalculate/status` | Recalculation job status |
+| `GET /api/wiki/comments` | List wiki comment threads (with nested replies) |
+| `POST /api/wiki/comments` | Post a comment or reply (one level deep) |
+| `DELETE /api/wiki/comments/{id}` | Delete a comment and its replies |
 | `POST /api/sync/trigger` | Trigger Coros API sync |
 | `GET /api/sync/status` | Sync job status |
 | `GET /api/athlete` | Read athlete profile |
@@ -64,6 +67,9 @@ A fitness analytics app for Norwegian Method endurance training, planned for dep
 - `/dashboard` — main analytics dashboard
 - `/advanced-metrics` — paginated activity table with inline lactate entry
 - `/athlete-settings` — athlete profile (max HR, LT1/LT2, paces, targets)
+- `/wiki` — metric reference documentation (8 sections) + threaded comment board
+- `/nutrition` — weekly meal plan table; upload a `.md` file to override, persisted in `localStorage`
+- `/training-plan` — Week A/B training plan table; same `.md` upload pattern
 
 ---
 
@@ -136,6 +142,7 @@ LT1 ≈ LT2 × 0.88 (configurable via Athlete Profile).
 | `activity_summaries` | activity_id, date, distance_meters, avg_hr, zone1/2/3_secs, avg_cadence, ground_time, stride_height, lactate_1-5_mmol/notes |
 | `activity_time_series` | activity_id, stream_data (JSONB: timestamps, heart_rate, power, speed, lat_long, …) |
 | `athlete_profile` | id=1 (singleton), max_hr, lt1_hr, lt2_hr, lt1_lthr_ratio, ftp_watts, weekly_zone2_target_mins, … |
+| `wiki_comments` | id, parent_id (→ self, CASCADE), author, body, created_at |
 
 Schema changes require a manual `ALTER TABLE` on the Docker container:
 ```bash
@@ -172,6 +179,9 @@ curl http://localhost:8000/api/import/fit/status
    - ✅ GPS route map in activity detail modal (Leaflet, CartoDB dark tiles)
    - ✅ Paginated activity table on dashboard (last 4 months, 10/page)
    - ✅ Weekly Zone 2 volume trend chart (12 weeks, target line)
+   - ✅ Metrics Wiki page with full indicator reference and threaded comment board
+   - ✅ Nutrition page (weekly meal plan table, `.md` file upload to override)
+   - ✅ Training Plan page (Week A/B table, same `.md` upload pattern)
    - Metric tooltips on hover
 5. Production deployment on Oracle VM at dataandmiles.com — in progress (VM provisioning)
 

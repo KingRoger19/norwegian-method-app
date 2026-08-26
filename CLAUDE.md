@@ -65,6 +65,7 @@ LT1 ≈ LT2 × 0.88 (configurable via `athlete_profile`). Zone seconds are compu
 | `routers/sync.py` | trigger/status for Coros sync |
 | `routers/fit_import.py` | trigger (directory), upload (multipart), status |
 | `routers/recalculate.py` | trigger/status — re-derives zones & pct_of_hr_max from stored JSONB streams |
+| `routers/wiki.py` | `GET/POST /api/wiki/comments`, `DELETE /api/wiki/comments/{id}` — threaded wiki comment board |
 | `routers/athlete.py` | GET/PUT athlete profile singleton |
 | `services/coros_client.py` | MCP stdio client wrapping `coros-mcp serve` |
 | `services/ingestion.py` | `run_sync()` — pulls daily metrics, sleep, activities from Coros |
@@ -108,6 +109,11 @@ docker exec coros_postgres psql -U groggero -d data_and_miles -c "ALTER TABLE ..
 }
 ```
 
+### `wiki_comments`
+`id` (PK, serial) · `parent_id` (FK → self, ON DELETE CASCADE, nullable) · `author` (varchar 50) · `body` (text) · `created_at` (timestamp)
+
+> One level of replies only — server rejects replies to replies. Deleting a parent cascades to all its replies.
+
 ### `athlete_profile`
 Singleton row (`id = 1`, enforced by CHECK constraint). `max_hr` · `resting_hr` · `lt1_hr` · `lt2_hr` · `lt1_lthr_ratio` · `lt1_pace_sec_km` · `lt2_pace_sec_km` · `ftp_watts` · `weekly_zone2_target_mins` · `date_of_birth` · `gender` · `height_cm` · `weight_kg` · `updated_at`
 
@@ -130,6 +136,9 @@ Singleton row (`id = 1`, enforced by CHECK constraint). `max_hr` · `resting_hr`
 | `components/SleepStatsBox.tsx` | Sleep₁d and Sleep₇d mean, deep%/REM% |
 | `components/ReadinessCard.tsx` | Green/yellow/red readiness banner |
 | `components/Zone2TrendChart.tsx` | 12-week Z2 volume bars, target reference line, faded current week |
+| `app/wiki/page.tsx` | Metric reference wiki (8 sections) + threaded comment board |
+| `app/nutrition/page.tsx` | Weekly meal plan table; client-side `.md` upload overrides via `localStorage` |
+| `app/training-plan/page.tsx` | Week A/B training plan table; same `.md` upload pattern as Nutrition |
 | `components/IntensityDistributionChart.tsx` | Z1/Z2/Z3 stacked bars |
 | `components/HRVLoadChart.tsx` | HRV + training load dual-axis |
 | `components/ActivityTable.tsx` | Paginated activity list (page/totalPages/onPrev/onNext props) |

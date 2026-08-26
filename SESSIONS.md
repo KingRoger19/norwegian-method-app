@@ -63,6 +63,51 @@
 
 ---
 
+## Session 6 — 2026-08-26
+
+### What was built
+
+**Bug fix: zone data reset on sync**
+- `app/services/ingestion.py` — `_upsert_activity()` no longer overwrites `zone1_secs / zone2_secs / zone3_secs` when the Coros API returns all-zero zones (which happens for activities already imported from `.fit` files). If all three zone values from the API are 0, those columns are excluded from the `ON CONFLICT DO UPDATE` set, preserving `.fit`-computed data.
+
+**Bug fix: intensity distribution missing current week**
+- `app/routers/dashboard.py` — `GET /api/dashboard/intensity-distribution` rewritten to use `generate_series` (matching the zone2-trend endpoint), so the current in-progress week always appears even when no activities have been recorded yet.
+
+**Metrics Wiki page (`/wiki`)**
+- `models.py` — Added `WikiComment` ORM model (`wiki_comments` table: id, parent_id → CASCADE, author, body, created_at)
+- Docker: `wiki_comments` table created manually with `ON DELETE CASCADE` on `parent_id`
+- `app/routers/wiki.py` — `GET /api/wiki/comments` (threaded tree), `POST /api/wiki/comments` (top-level or reply, one level max), `DELETE /api/wiki/comments/{id}` (cascades replies)
+- `app/main.py` — Mounted `wiki_router`
+- `frontend/lib/api.ts` — `WikiComment` type + `getWikiComments` / `createWikiComment` / `deleteWikiComment`
+- `frontend/app/wiki/page.tsx` — Static metric reference with 8 sections (Training Zones, KPI Cards, Daily Readiness, 7-Day Rolling HRV, Sleep, Zone 2 Trend, Per-Activity Metrics, Lactate); jump-link bar; each metric card shows formula (monospace green), description, colour-coded threshold badges, footnotes. Bottom section: threaded comment board — post, reply (one level), delete.
+- `frontend/components/NavDrawer.tsx` — Added Metrics Wiki link
+
+**Nutrition page (`/nutrition`)**
+- `frontend/app/nutrition/page.tsx` — Static weekly meal plan table (7 days × 6 meal slots) with HTML `<ul>/<li>` content rendered correctly; horizontally scrollable with sticky Day column; day badges colour-coded by type (blue fasted/gym, amber double-threshold, green easy, purple Saturday). Upload button reads a `.md` file client-side, parses the markdown table, and stores it in `localStorage` to persist across sessions. "Reset to default" button shown when a custom file is active.
+- `frontend/components/NavDrawer.tsx` — Added Nutrition link
+
+**Training Plan page (`/training-plan`)**
+- `frontend/app/training-plan/page.tsx` — Week A / Week B two-column plan table; day badges colour-coded; `**Total Vol.**` row rendered as bold summary row. Same `.md` upload + localStorage pattern as Nutrition.
+- `frontend/components/NavDrawer.tsx` — Added Training Plan link
+
+### Key decisions
+- Wiki comments stored in PostgreSQL (not `localStorage`) so both athlete and coach see the same thread
+- One level of replies enforced server-side; attempting to reply to a reply returns HTTP 400
+- Markdown tables for Nutrition and Training Plan parsed client-side (split by `|`, strip separator rows) so no backend or npm parser dependency is needed; `dangerouslySetInnerHTML` used for cells that contain HTML — acceptable because content is authored locally and never user-submitted
+- `generate_series` is now used in both `zone2-trend` and `intensity-distribution` for consistent gap-filling behaviour
+
+### Git
+- Commit: `c36f782`
+
+### Possible next session topics
+- Complete Oracle Cloud VM provisioning and deploy to dataandmiles.com
+- Add `/blog` MDX section to Next.js
+- Per-run HR% of max trend chart
+- Sport/activity type column in `activity_summaries`
+- Personalised readiness thresholds
+
+---
+
 ## Session 4 — 2026-08-24/25
 
 ### What was built
