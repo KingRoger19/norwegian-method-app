@@ -136,6 +136,9 @@ Singleton row (`id = 1`, enforced by CHECK constraint). `max_hr` · `resting_hr`
 | `components/SleepStatsBox.tsx` | Sleep₁d and Sleep₇d mean, deep%/REM% |
 | `components/ReadinessCard.tsx` | Green/yellow/red readiness banner |
 | `components/Zone2TrendChart.tsx` | 12-week Z2 volume bars, target reference line, faded current week |
+| `app/page.tsx` | Public blog home — 5 category cards, light theme, no auth |
+| `app/blog/[category]/page.tsx` | Category post list, statically generated |
+| `app/blog/[category]/[slug]/page.tsx` | MDX post renderer via `next-mdx-remote/rsc` |
 | `app/wiki/page.tsx` | Metric reference wiki (8 sections) + threaded comment board |
 | `app/nutrition/page.tsx` | Weekly meal plan table; client-side `.md` upload overrides via `localStorage` |
 | `app/training-plan/page.tsx` | Week A/B training plan table; same `.md` upload pattern as Nutrition |
@@ -149,6 +152,28 @@ Singleton row (`id = 1`, enforced by CHECK constraint). `max_hr` · `resting_hr`
 | `components/UploadFitButton.tsx` | File picker for `.fit` uploads, polls import status |
 
 All Recharts components are loaded via `dynamic(..., { ssr: false })`.
+
+## Production Deployment
+
+- **Server**: Oracle Cloud A1.Flex (ARM aarch64), Oracle Linux 9, IP `130.61.32.112`
+- **SSH**: `ssh -i ~/.ssh/id_ed25519 opc@130.61.32.112` (then `sudo su`)
+- **Services**: `systemctl restart fastapi` / `systemctl restart nextjs`
+- **Deploy new code**: `cd /opt/app && git pull && cd frontend && npm run build && systemctl restart nextjs`
+- **nginx config**: `/etc/nginx/conf.d/dataandmiles.conf`
+- **App `.env`**: `/opt/app/.env` (gitignored, contains DB + Coros + coach credentials + `COROS_MCP_COMMAND`)
+- **Blog posts**: add `.mdx` files to `frontend/content/<category>/`, then redeploy
+
+## Blog Content
+
+Posts live in `frontend/content/<category>/<slug>.mdx` with frontmatter:
+```
+---
+title: "Post Title"
+date: "YYYY-MM-DD"
+excerpt: "One-line summary shown on category page."
+---
+```
+Categories: `boring-stuff`, `running-journey`, `equipment`, `nutrition`, `training-approach`.
 
 ## Multi-user Auth
 

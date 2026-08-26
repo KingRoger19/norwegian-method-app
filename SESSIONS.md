@@ -108,6 +108,67 @@
 
 ---
 
+## Session 7 — 2026-08-26 (continued)
+
+### What was built
+
+**Oracle Cloud VM — full deployment to dataandmiles.com**
+- VM: Ampere A1.Flex, 1 OCPU / 6 GB RAM, Oracle Linux 9, Frankfurt region, IP `130.61.32.112`
+- SSH access via `opc` user with `~/.ssh/id_ed25519`
+- DNS: A records for `dataandmiles.com` and `www.dataandmiles.com` set in DreamHost (blank host + www host)
+- Installed: Docker CE 29.7.2 (via `--allowerasing` to remove `podman-docker` conflict), Docker Compose v5.5.0, nginx, certbot (via pip3), Node.js 20 LTS (NodeSource), git
+- Let's Encrypt SSL cert issued for `dataandmiles.com` + `www.dataandmiles.com`; nginx configured manually with HTTP→HTTPS redirect
+- Firewall: `firewall-cmd` opened ports 80/443; Oracle Security List ingress rules added for TCP 80/443
+- SELinux: `setsebool -P httpd_can_network_connect 1` required for nginx→Next.js proxying
+- `COROS_MCP_COMMAND=/opt/app/.venv/bin/coros-mcp` added to `.env` (coros-mcp not on system PATH, only in venv)
+- All 1,124 `.fit` files transferred via `scp` and bulk-imported via `POST /api/import/fit/trigger`
+- Coros sync verified working after adding `COROS_MCP_COMMAND` to `.env`
+
+**Systemd services**
+- `/etc/systemd/system/fastapi.service` — runs `/opt/app/.venv/bin/uvicorn` directly (bypasses uv, which failed with status=203/EXEC in systemd context)
+- `/etc/systemd/system/nextjs.service` — runs `npm start -- -p 3000` from `/opt/app/frontend`
+- Both enabled and auto-restart on failure; survive reboots
+
+**nginx config** (`/etc/nginx/conf.d/dataandmiles.conf`)
+- Port 80 → 301 redirect to HTTPS
+- Port 443: `/api/` → FastAPI :8000, `/` → Next.js :3000
+- `client_max_body_size 100M` for `.fit` uploads
+
+**Blog at dataandmiles.com**
+- `frontend/lib/posts.ts` — gray-matter frontmatter parser + filesystem helpers (`getPostsByCategory`, `getPost`, `formatDate`)
+- `frontend/app/page.tsx` — public blog home (light theme, white bg); five category cards; "Open App →" link to `/dashboard`
+- `frontend/app/blog/[category]/page.tsx` — post list per category, statically generated
+- `frontend/app/blog/[category]/[slug]/page.tsx` — MDX post renderer via `next-mdx-remote/rsc`, prose styling via `@tailwindcss/typography`
+- `frontend/content/` — one placeholder `.mdx` post per category (5 posts total)
+- `frontend/app/globals.css` — removed hardcoded dark `html/body` background so blog pages can use light theme
+- `frontend/app/layout.tsx` — removed dark bg from body class (each page sets its own bg)
+- Installed: `gray-matter`, `next-mdx-remote`, `@tailwindcss/typography`
+
+**To add new blog posts**: create `frontend/content/<category>/<slug>.mdx` with frontmatter (`title`, `date`, `excerpt`), commit, push, then on server: `git pull && cd frontend && npm run build && systemctl restart nextjs`
+
+### Infrastructure notes
+- Repo is public on GitHub (no secrets committed; `.env` gitignored)
+- certbot auto-renewal: `/etc/cron.d/certbot-renew` runs daily at 03:00, reloads nginx on success
+- Athlete Profile set: max_hr=190, lt2_hr=175; all 1,124 activities recalculated
+
+### Key decisions
+- Installed Docker CE via `--allowerasing` (removes `podman-docker` shim that ships with Oracle Linux 9)
+- Used `pip3 install certbot certbot-nginx` (certbot not in Oracle Linux repos or EPEL; snap also unavailable)
+- FastAPI systemd service calls venv uvicorn directly — `uv` binary cannot be executed by systemd (status=203, likely SELinux label mismatch on ARM aarch64)
+- Blog is part of the existing Next.js app (not a separate site) — public routes at `/` and `/blog/...`, protected app routes at `/dashboard` etc.
+
+### Git
+- Commits: `c36f782` (Wiki/Nutrition/Training Plan + zone fixes), `e43d81e` (markdown docs), `5db4404` (blog)
+
+### Possible next session topics
+- Write real blog posts in each category
+- Per-run HR% of max trend chart
+- Sport/activity type column in `activity_summaries`
+- Personalised readiness thresholds
+- Set up a deployment script (`deploy.sh`) to automate `git pull + build + restart`
+
+---
+
 ## Session 4 — 2026-08-24/25
 
 ### What was built

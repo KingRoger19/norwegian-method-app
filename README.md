@@ -1,6 +1,6 @@
 # Norwegian Method Training Analytics
 
-A fitness analytics app for Norwegian Method endurance training, planned for deployment at **dataandmiles.com**. Ingests workout data from COROS devices and computes training-specific metrics around heart-rate zones (LT1/LT2 thresholds).
+A fitness analytics app for Norwegian Method endurance training, live at **[dataandmiles.com](https://dataandmiles.com)**. Ingests workout data from COROS devices and computes training-specific metrics around heart-rate zones (LT1/LT2 thresholds).
 
 ---
 
@@ -63,6 +63,9 @@ A fitness analytics app for Norwegian Method endurance training, planned for dep
 | `PUT /api/athlete` | Upsert athlete profile |
 
 ### Pages
+- `/` — public blog home (light theme); five category cards; links to app
+- `/blog/[category]` — post list per category
+- `/blog/[category]/[slug]` — MDX post (gray-matter frontmatter, `next-mdx-remote/rsc`)
 - `/login` — dark zinc auth card
 - `/dashboard` — main analytics dashboard
 - `/advanced-metrics` — paginated activity table with inline lactate entry
@@ -183,10 +186,10 @@ curl http://localhost:8000/api/import/fit/status
    - ✅ Nutrition page (weekly meal plan table, `.md` file upload to override)
    - ✅ Training Plan page (Week A/B table, same `.md` upload pattern)
    - Metric tooltips on hover
-5. Production deployment on Oracle VM at dataandmiles.com — in progress (VM provisioning)
+5. ✅ Production deployment — live at [dataandmiles.com](https://dataandmiles.com) on Oracle Cloud A1.Flex VM (nginx + Let's Encrypt + systemd services)
 
 ### Nice to have
-1. Blog section at `/blog` with MDX posts (planned for deployment sprint)
+1. ✅ Blog at `/` with MDX posts — 5 categories, `next-mdx-remote/rsc`, `@tailwindcss/typography`
 2. Per-run HR% of max trend chart
 3. Sport/activity type column in `activity_summaries`
 4. Multi-user separation (per-user column in `activity_summaries`)
