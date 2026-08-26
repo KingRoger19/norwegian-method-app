@@ -3,6 +3,23 @@ import { notFound } from "next/navigation";
 import { MDXRemote } from "next-mdx-remote/rsc";
 import { CATEGORIES, getPost, getPostsByCategory, formatDate } from "@/lib/posts";
 
+export async function generateMetadata({ params }: { params: Promise<{ category: string; slug: string }> }) {
+  const { category, slug } = await params;
+  const post = getPost(category, slug);
+  if (!post) return {};
+  return {
+    title: `${post.title} — dataandmiles`,
+    description: post.excerpt,
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      type: "article",
+      publishedTime: post.date,
+      authors: ["Gabriele Roggero"],
+    },
+  };
+}
+
 export function generateStaticParams() {
   return CATEGORIES.filter((c) => !c.isApp).flatMap((cat) =>
     getPostsByCategory(cat.slug).map((post) => ({

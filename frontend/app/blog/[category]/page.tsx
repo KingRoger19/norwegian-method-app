@@ -2,6 +2,17 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CATEGORIES, getPostsByCategory, formatDate } from "@/lib/posts";
 
+export async function generateMetadata({ params }: { params: Promise<{ category: string }> }) {
+  const { category } = await params;
+  const cat = CATEGORIES.find((c) => c.slug === category && !c.isApp);
+  if (!cat) return {};
+  return {
+    title: `${cat.title} — dataandmiles`,
+    description: cat.description,
+    openGraph: { title: `${cat.title} — dataandmiles`, description: cat.description },
+  };
+}
+
 export function generateStaticParams() {
   return CATEGORIES.filter((c) => !c.isApp).map((c) => ({ category: c.slug }));
 }
