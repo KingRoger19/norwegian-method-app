@@ -1,13 +1,11 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @theme inline {
   --font-sans: "Inter", system-ui, sans-serif;
 }
 
-html,
 body {
-  background-color: #09090b; /* zinc-950 */
-  color: #f4f4f5; /* zinc-100 */
   font-family: var(--font-sans);
 }
 

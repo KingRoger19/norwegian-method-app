@@ -1,0 +1,41 @@
+---
+title: "Building a Training Analytics Dashboard"
+date: "2026-08-26"
+excerpt: "Why I built my own analytics app instead of relying on Garmin Connect or Strava."
+---
+
+I've been running with data for years. Heart rate, pace, power, cadence — all of it tracked and uploaded somewhere. But I never felt like I could *see* my training clearly.
+
+Garmin Connect shows you what happened. Strava shows you where you ran. Neither tells you whether you're executing the Norwegian Method correctly.
+
+## What I Needed
+
+The Norwegian Method lives and dies by zone distribution. If I'm spending 40% of my time above LT2 when I think I'm in Z2, I'm not doing the Norwegian Method — I'm just running hard and calling it something else.
+
+I needed a tool that could:
+
+1. Show my zone distribution per session and per week
+2. Track Z2 volume trend over 12 weeks
+3. Correlate HRV with training load to catch overreach early
+4. Flag readiness based on sleep and autonomic data
+
+None of the standard platforms do this well.
+
+## What I Built
+
+I imported data from my COROS watch via their API and .fit file exports. I compute heart-rate zones per second against my current LT1/LT2 thresholds — not COROS's built-in zones, which use a different model.
+
+The dashboard is a FastAPI backend with a PostgreSQL database and a Next.js frontend. It runs on an Oracle Cloud VM at this domain.
+
+Key features:
+- Per-second zone calculation from raw HR streams
+- 7-day rolling HRV metrics (μ, σ, CV)
+- Daily readiness flag (green/yellow/red)
+- Activity detail with GPS route map
+- Lactate measurement logging
+
+## The Code
+
+The project is open source on [GitHub](https://github.com/KingRoger19/norwegian-method-app).
+
+You can explore the live dashboard — it requires a login, but the training data and analytics are all real.
