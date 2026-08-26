@@ -166,6 +166,12 @@ async def _upsert_activity(
     # Only overwrite max_hr when we actually have a value — Coros API often omits it
     if row.get("max_hr") is not None:
         update_cols["max_hr"] = stmt.excluded["max_hr"]
+    # Don't clobber .fit-computed zones with zeros from the Coros API (which rarely
+    # returns hr_zones for activities already imported via .fit).
+    if zone1 == 0 and zone2 == 0 and zone3 == 0:
+        update_cols.pop("zone1_secs", None)
+        update_cols.pop("zone2_secs", None)
+        update_cols.pop("zone3_secs", None)
     stmt = stmt.on_conflict_do_update(index_elements=["activity_id"], set_=update_cols)
     await session.execute(stmt)
 

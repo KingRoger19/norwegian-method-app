@@ -146,6 +146,16 @@ class AthleteProfile(Base):
     )
 
 
+class WikiComment(Base):
+    __tablename__ = "wiki_comments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    parent_id: Mapped[Optional[int]] = mapped_column(Integer, ForeignKey("wiki_comments.id", ondelete="CASCADE"))
+    author: Mapped[str] = mapped_column(String(50), nullable=False)
+    body: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text("NOW()"))
+
+
 async def create_all_tables() -> None:
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

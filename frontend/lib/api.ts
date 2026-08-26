@@ -265,6 +265,33 @@ export const triggerRecalculate = () =>
 export const getRecalculateStatus = () =>
   apiFetch<RecalcStatus>("/recalculate/status");
 
+// ── Wiki comments ─────────────────────────────────────────────────────────────
+
+export interface WikiComment {
+  id: number;
+  parent_id: number | null;
+  author: string;
+  body: string;
+  created_at: string;
+  replies: WikiComment[];
+}
+
+export const getWikiComments = () =>
+  apiFetch<WikiComment[]>("/wiki/comments");
+
+export const createWikiComment = (data: {
+  author: string;
+  body: string;
+  parent_id?: number;
+}) =>
+  apiFetch<WikiComment>("/wiki/comments", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const deleteWikiComment = (id: number) =>
+  apiFetch<{ ok: boolean }>(`/wiki/comments/${id}`, { method: "DELETE" });
+
 // ── Lactate ───────────────────────────────────────────────────────────────────
 
 export async function updateActivityLactate(

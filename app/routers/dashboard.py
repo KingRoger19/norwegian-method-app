@@ -67,23 +67,26 @@ async def get_summary() -> dict[str, Any]:
 async def get_intensity_distribution(
     weeks: int = Query(default=8, ge=1, le=52),
 ) -> list[dict[str, Any]]:
-    cutoff = date.today() - timedelta(weeks=weeks)
-
     async with AsyncSessionLocal() as session:
         rows = (
             await session.execute(
                 text("""
                     SELECT
-                        date_trunc('week', date)::date          AS week_start,
-                        COALESCE(SUM(zone1_secs), 0) / 60.0    AS zone1_mins,
-                        COALESCE(SUM(zone2_secs), 0) / 60.0    AS zone2_mins,
-                        COALESCE(SUM(zone3_secs), 0) / 60.0    AS zone3_mins
-                    FROM activity_summaries
-                    WHERE date >= :cutoff
-                    GROUP BY week_start
-                    ORDER BY week_start
+                        gs.week_start::date                             AS week_start,
+                        COALESCE(SUM(a.zone1_secs), 0) / 60.0         AS zone1_mins,
+                        COALESCE(SUM(a.zone2_secs), 0) / 60.0         AS zone2_mins,
+                        COALESCE(SUM(a.zone3_secs), 0) / 60.0         AS zone3_mins
+                    FROM generate_series(
+                        date_trunc('week', CURRENT_DATE - (:weeks - 1) * interval '1 week'),
+                        date_trunc('week', CURRENT_DATE),
+                        interval '1 week'
+                    ) AS gs(week_start)
+                    LEFT JOIN activity_summaries a
+                        ON date_trunc('week', a.date)::date = gs.week_start
+                    GROUP BY gs.week_start
+                    ORDER BY gs.week_start
                 """),
-                {"cutoff": cutoff},
+                {"weeks": weeks},
             )
         ).fetchall()
 
