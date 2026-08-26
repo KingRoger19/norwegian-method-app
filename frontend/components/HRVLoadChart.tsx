@@ -33,10 +33,10 @@ export default function HRVLoadChart({ data }: Props) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
       <div className="mb-4">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+        <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">
           Autonomic Recovery vs Stress
         </p>
-        <p className="text-xs text-zinc-600 mt-0.5">
+        <p className="text-xs text-zinc-400 mt-0.5">
           HRV (ms) · dashed = rolling baseline · bars = daily training load
         </p>
       </div>

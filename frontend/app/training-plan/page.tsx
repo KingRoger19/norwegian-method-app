@@ -137,13 +137,13 @@ export default function TrainingPlanPage() {
             <span className="text-lg hidden sm:inline">🏔</span>
             <span className="font-semibold text-sm text-zinc-100 hidden sm:inline">Norwegian Method</span>
             <span className="text-zinc-700 hidden sm:inline">/</span>
-            <span className="text-sm text-zinc-400">Training Plan</span>
+            <span className="text-sm text-zinc-200">Training Plan</span>
           </div>
           <div className="flex items-center gap-2">
             {isCustom && (
               <button
                 onClick={handleReset}
-                className="text-xs text-zinc-500 hover:text-zinc-300 px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-600 transition-colors"
+                className="text-xs text-zinc-300 hover:text-zinc-100 px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-600 transition-colors"
               >
                 Reset to default
               </button>
@@ -193,7 +193,7 @@ export default function TrainingPlanPage() {
                   {table.headers.map((h, i) => (
                     <th
                       key={i}
-                      className={`text-left text-xs font-semibold text-zinc-400 uppercase tracking-wider px-5 py-3 ${
+                      className={`text-left text-xs font-semibold text-zinc-200 uppercase tracking-wider px-5 py-3 ${
                         i === 0
                           ? "w-36 sticky left-0 bg-zinc-900 z-10 border-r border-zinc-800 whitespace-nowrap"
                           : "min-w-72"
@@ -248,7 +248,7 @@ export default function TrainingPlanPage() {
             </table>
           </div>
         ) : (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-6 py-12 text-center text-sm text-zinc-500">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-6 py-12 text-center text-sm text-zinc-300">
             No table found. Upload a markdown file containing a table.
           </div>
         )}

@@ -144,11 +144,11 @@ export default function AdvancedMetricsPage() {
               Norwegian Method
             </span>
             <span className="text-zinc-700 hidden sm:inline">/</span>
-            <span className="text-sm text-zinc-400 hidden sm:inline">Advanced Metrics</span>
+            <span className="text-sm text-zinc-200 hidden sm:inline">Advanced Metrics</span>
           </div>
           <button
             onClick={handleSignOut}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1"
+            className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors px-2 py-1"
           >
             Sign out
           </button>
@@ -160,7 +160,7 @@ export default function AdvancedMetricsPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
           <div>
             <h1 className="text-sm font-semibold text-zinc-100">Advanced Metrics</h1>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-xs text-zinc-300 mt-0.5">
               {loading ? "Loading…" : `${total} activities · showing ${page * PAGE_SIZE + 1}–${Math.min((page + 1) * PAGE_SIZE, total)}`}
             </p>
           </div>
@@ -172,7 +172,7 @@ export default function AdvancedMetricsPage() {
             >
               ← Prev
             </button>
-            <span className="text-xs text-zinc-500 tabular-nums">
+            <span className="text-xs text-zinc-300 tabular-nums">
               {page + 1} / {totalPages || 1}
             </span>
             <button
@@ -190,26 +190,26 @@ export default function AdvancedMetricsPage() {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-zinc-900 border-b border-zinc-800">
-                <th className="text-left px-3 py-2.5 text-zinc-500 font-medium whitespace-nowrap">Date</th>
-                <th className="text-right px-3 py-2.5 text-zinc-500 font-medium whitespace-nowrap">Dist</th>
-                <th className="text-right px-3 py-2.5 text-zinc-500 font-medium whitespace-nowrap">Duration</th>
-                <th className="text-right px-3 py-2.5 text-zinc-500 font-medium whitespace-nowrap">Avg HR</th>
+                <th className="text-left px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Date</th>
+                <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Dist</th>
+                <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Duration</th>
+                <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Avg HR</th>
                 {[1, 2, 3, 4, 5].flatMap((n) => [
                   <th key={`h-l${n}-m`} className="px-3 py-2.5 text-center whitespace-nowrap">
                     <span className="text-amber-400 font-semibold">L{n}</span>
-                    <span className="text-zinc-600 ml-1">mmol/L</span>
+                    <span className="text-zinc-400 ml-1">mmol/L</span>
                   </th>,
                   <th key={`h-l${n}-n`} className="px-3 py-2.5 text-left whitespace-nowrap">
-                    <span className="text-zinc-500 font-medium">L{n} notes</span>
+                    <span className="text-zinc-300 font-medium">L{n} notes</span>
                   </th>,
                 ])}
-                <th className="px-3 py-2.5 text-zinc-500 font-medium"></th>
+                <th className="px-3 py-2.5 text-zinc-300 font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={15} className="text-center py-12 text-zinc-600">
+                  <td colSpan={15} className="text-center py-12 text-zinc-400">
                     <div className="inline-flex items-center gap-2">
                       <span className="w-4 h-4 border-2 border-zinc-700 border-t-blue-500 rounded-full animate-spin inline-block" />
                       Loading…
@@ -231,13 +231,13 @@ export default function AdvancedMetricsPage() {
                       <td className="px-3 py-2 whitespace-nowrap text-zinc-300 font-medium">
                         {a.date}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-zinc-400">
+                      <td className="px-3 py-2 text-right tabular-nums text-zinc-200">
                         {a.distance_km} km
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-zinc-400">
+                      <td className="px-3 py-2 text-right tabular-nums text-zinc-200">
                         {a.duration_formatted}
                       </td>
-                      <td className="px-3 py-2 text-right tabular-nums text-zinc-400">
+                      <td className="px-3 py-2 text-right tabular-nums text-zinc-200">
                         {a.avg_hr ? `${a.avg_hr} bpm` : "—"}
                       </td>
 
@@ -282,7 +282,7 @@ export default function AdvancedMetricsPage() {
                               ? "bg-red-900/60 text-red-400 border border-red-800"
                               : dirty
                               ? "bg-blue-600 hover:bg-blue-500 text-white"
-                              : "bg-zinc-800 text-zinc-600 cursor-default border border-zinc-700"
+                              : "bg-zinc-800 text-zinc-400 cursor-default border border-zinc-700"
                           }`}
                         >
                           {status === "saving" ? (
@@ -316,7 +316,7 @@ export default function AdvancedMetricsPage() {
                 className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
                   i === page
                     ? "bg-blue-600 text-white"
-                    : "bg-zinc-800 text-zinc-400 hover:bg-zinc-700"
+                    : "bg-zinc-800 text-zinc-200 hover:bg-zinc-700"
                 }`}
               >
                 {i + 1}

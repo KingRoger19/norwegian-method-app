@@ -26,15 +26,15 @@ export default function ActivityTable({
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
       <div className="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
         <div>
-          <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+          <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">
             Recent Workouts
           </p>
-          <p className="text-xs text-zinc-600 mt-0.5">
+          <p className="text-xs text-zinc-400 mt-0.5">
             Last 4 months · {total} activities · click for detail
           </p>
         </div>
         {totalPages > 1 && (
-          <p className="text-xs text-zinc-600">
+          <p className="text-xs text-zinc-400">
             Page {page + 1} of {totalPages}
           </p>
         )}
@@ -48,7 +48,7 @@ export default function ActivityTable({
                 (h) => (
                   <th
                     key={h}
-                    className="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider whitespace-nowrap"
+                    className="px-4 py-3 text-left text-xs font-medium text-zinc-300 uppercase tracking-wider whitespace-nowrap"
                   >
                     {h}
                   </th>
@@ -59,7 +59,7 @@ export default function ActivityTable({
           <tbody>
             {activities.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-zinc-600 text-sm">
+                <td colSpan={6} className="px-4 py-8 text-center text-zinc-400 text-sm">
                   No activities found
                 </td>
               </tr>
@@ -72,7 +72,7 @@ export default function ActivityTable({
                   i !== activities.length - 1 ? "border-b border-zinc-800/60" : ""
                 }`}
               >
-                <td className="px-4 py-3 text-zinc-400 whitespace-nowrap tabular">
+                <td className="px-4 py-3 text-zinc-200 whitespace-nowrap tabular">
                   {fmtShortDate(a.date)}
                 </td>
                 <td className="px-4 py-3 text-zinc-200 whitespace-nowrap">
@@ -95,13 +95,13 @@ export default function ActivityTable({
                           ? "text-amber-400"
                           : a.zone2_pct >= 25
                           ? "text-blue-400"
-                          : "text-zinc-400"
+                          : "text-zinc-200"
                       }`}
                     >
                       {a.zone2_pct.toFixed(0)}%
                     </span>
                   ) : (
-                    <span className="text-zinc-600">—</span>
+                    <span className="text-zinc-400">—</span>
                   )}
                 </td>
               </tr>
@@ -115,7 +115,7 @@ export default function ActivityTable({
           <button
             onClick={onPrev}
             disabled={page === 0}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 text-xs text-zinc-200 hover:text-zinc-100 disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors"
           >
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">
               <path fillRule="evenodd" d="M9.78 4.22a.75.75 0 010 1.06L7.06 8l2.72 2.72a.75.75 0 11-1.06 1.06L5.47 8.53a.75.75 0 010-1.06l3.25-3.25a.75.75 0 011.06 0z" clipRule="evenodd" />
@@ -125,7 +125,7 @@ export default function ActivityTable({
           <button
             onClick={onNext}
             disabled={page >= totalPages - 1}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-100 disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 text-xs text-zinc-200 hover:text-zinc-100 disabled:text-zinc-700 disabled:cursor-not-allowed transition-colors"
           >
             Next
             <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5">

@@ -75,7 +75,7 @@ export default function NavDrawer() {
       {/* Hamburger trigger */}
       <button
         onClick={() => setOpen(true)}
-        className="p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
+        className="p-2 rounded-lg text-zinc-200 hover:text-zinc-100 hover:bg-zinc-800 transition-colors"
         aria-label="Open navigation"
       >
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -109,7 +109,7 @@ export default function NavDrawer() {
           </div>
           <button
             onClick={() => setOpen(false)}
-            className="p-1.5 rounded text-zinc-500 hover:text-zinc-200 transition-colors"
+            className="p-1.5 rounded text-zinc-300 hover:text-zinc-200 transition-colors"
             aria-label="Close navigation"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
@@ -128,7 +128,7 @@ export default function NavDrawer() {
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 pathname === item.href
                   ? "bg-zinc-800 text-zinc-100"
-                  : "text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50"
+                  : "text-zinc-200 hover:text-zinc-100 hover:bg-zinc-800/50"
               }`}
             >
               {item.icon}

@@ -301,7 +301,7 @@ function CommentThread({
         <div className="flex items-center justify-between mb-1">
           <span className="text-xs font-semibold text-zinc-300">{comment.author}</span>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-zinc-600">{timeAgo(comment.created_at)}</span>
+            <span className="text-xs text-zinc-400">{timeAgo(comment.created_at)}</span>
             {comment.replies.length === 0 && (
               <button
                 onClick={() => onReply(comment.id)}
@@ -311,11 +311,11 @@ function CommentThread({
               </button>
             )}
             {comment.replies.length > 0 && (
-              <span className="text-xs text-zinc-600">{comment.replies.length} repl{comment.replies.length === 1 ? "y" : "ies"}</span>
+              <span className="text-xs text-zinc-400">{comment.replies.length} repl{comment.replies.length === 1 ? "y" : "ies"}</span>
             )}
             <button
               onClick={() => onDelete(comment.id)}
-              className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+              className="text-xs text-zinc-400 hover:text-red-400 transition-colors"
             >
               Delete
             </button>
@@ -330,10 +330,10 @@ function CommentThread({
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-semibold text-zinc-300">{r.author}</span>
                 <div className="flex items-center gap-3">
-                  <span className="text-xs text-zinc-600">{timeAgo(r.created_at)}</span>
+                  <span className="text-xs text-zinc-400">{timeAgo(r.created_at)}</span>
                   <button
                     onClick={() => onDelete(r.id)}
-                    className="text-xs text-zinc-600 hover:text-red-400 transition-colors"
+                    className="text-xs text-zinc-400 hover:text-red-400 transition-colors"
                   >
                     Delete
                   </button>
@@ -405,7 +405,7 @@ function CommentForm({
           <button
             type="button"
             onClick={onCancel}
-            className="px-3 py-1.5 text-zinc-400 hover:text-zinc-200 text-xs transition-colors"
+            className="px-3 py-1.5 text-zinc-200 hover:text-zinc-200 text-xs transition-colors"
           >
             Cancel
           </button>
@@ -459,7 +459,7 @@ export default function WikiPage() {
           <span className="text-lg hidden sm:inline">🏔</span>
           <span className="font-semibold text-sm text-zinc-100 hidden sm:inline">Norwegian Method</span>
           <span className="text-zinc-700 hidden sm:inline">/</span>
-          <span className="text-sm text-zinc-400">Metrics Wiki</span>
+          <span className="text-sm text-zinc-200">Metrics Wiki</span>
         </div>
       </header>
 
@@ -467,7 +467,7 @@ export default function WikiPage() {
         {/* Hero */}
         <div>
           <h1 className="text-2xl font-bold text-zinc-100 mb-2">Metrics Wiki</h1>
-          <p className="text-sm text-zinc-400 max-w-2xl">
+          <p className="text-sm text-zinc-200 max-w-2xl">
             Reference documentation for every indicator computed in this app. Use the section links to jump directly to a metric group.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
@@ -494,7 +494,7 @@ export default function WikiPage() {
           <section key={section.id} id={section.id} className="scroll-mt-20">
             <h2 className="text-base font-semibold text-zinc-100 mb-1">{section.title}</h2>
             {section.intro && (
-              <p className="text-sm text-zinc-400 mb-5 leading-relaxed">{section.intro}</p>
+              <p className="text-sm text-zinc-200 mb-5 leading-relaxed">{section.intro}</p>
             )}
             <div className="space-y-4">
               {section.metrics.map((m) => (
@@ -508,7 +508,7 @@ export default function WikiPage() {
                       {m.formula}
                     </div>
                   )}
-                  <p className="text-sm text-zinc-400 leading-relaxed">{m.description}</p>
+                  <p className="text-sm text-zinc-200 leading-relaxed">{m.description}</p>
                   {m.thresholds && m.thresholds.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {m.thresholds.map((t) => (
@@ -529,7 +529,7 @@ export default function WikiPage() {
                     </div>
                   )}
                   {m.note && (
-                    <p className="text-xs text-zinc-500 italic">{m.note}</p>
+                    <p className="text-xs text-zinc-300 italic">{m.note}</p>
                   )}
                 </div>
               ))}
@@ -540,19 +540,19 @@ export default function WikiPage() {
         {/* Comments */}
         <section id="comments" className="scroll-mt-20 pb-12" ref={commentsRef}>
           <h2 className="text-base font-semibold text-zinc-100 mb-1">Comments</h2>
-          <p className="text-sm text-zinc-500 mb-6">
+          <p className="text-sm text-zinc-300 mb-6">
             Notes, questions, or observations about the metrics. Replies are one level deep.
           </p>
 
           {/* New top-level comment */}
           <div className="mb-8">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">New comment</p>
+            <p className="text-xs text-zinc-300 uppercase tracking-wider mb-3">New comment</p>
             <CommentForm onSubmit={handlePost} />
           </div>
 
           {/* Thread list */}
           {comments.length === 0 ? (
-            <p className="text-sm text-zinc-600">No comments yet.</p>
+            <p className="text-sm text-zinc-400">No comments yet.</p>
           ) : (
             <div className="space-y-4">
               {comments.map((c) => (

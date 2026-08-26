@@ -97,14 +97,14 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                 Run · {fmtShortDate(activity.date)}
               </h2>
             </div>
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-zinc-300">
               {activity.distance_km.toFixed(2)} km · {activity.duration_formatted}
               {avgHr !== null && ` · ${avgHr} bpm avg`}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-200 transition-colors ml-4 flex-shrink-0"
+            className="text-zinc-300 hover:text-zinc-200 transition-colors ml-4 flex-shrink-0"
             aria-label="Close"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
@@ -138,7 +138,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
             },
           ].map((s) => (
             <div key={s.label} className="px-4 py-3 text-center">
-              <p className="text-xs text-zinc-500 mb-0.5">{s.label}</p>
+              <p className="text-xs text-zinc-300 mb-0.5">{s.label}</p>
               <p className="tabular font-semibold text-sm" style={{ color: s.color }}>
                 {s.value}
               </p>
@@ -149,14 +149,14 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
         {/* Charts */}
         <div className="p-6 space-y-6">
           {chartData.length === 0 ? (
-            <p className="text-sm text-zinc-600 text-center py-8">
+            <p className="text-sm text-zinc-400 text-center py-8">
               No time-series data for this activity
             </p>
           ) : (
             <>
               {/* HR chart */}
               <div>
-                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+                <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-3">
                   Cardiovascular Drift · Heart Rate
                 </p>
                 <ResponsiveContainer width="100%" height={180}>
@@ -211,7 +211,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
               {/* Pace chart */}
               {hasPace && (
                 <div>
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+                  <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-3">
                     Pace (min/km)
                   </p>
                   <ResponsiveContainer width="100%" height={160}>
@@ -260,7 +260,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
               {/* Power chart (if available) */}
               {hasPower && (
                 <div>
-                  <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+                  <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-3">
                     Running Power (W)
                   </p>
                   <ResponsiveContainer width="100%" height={140}>
@@ -315,7 +315,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
             if (coords.length < 2) return null;
             return (
               <div>
-                <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+                <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-3">
                   Route
                 </p>
                 <ActivityMap latLong={coords} />
@@ -334,7 +334,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                 .filter((s) => s.value !== null)
                 .map((s) => (
                   <div key={s.label} className="bg-zinc-800/40 rounded-lg p-3 text-center">
-                    <p className="text-xs text-zinc-500 mb-1">{s.label}</p>
+                    <p className="text-xs text-zinc-300 mb-1">{s.label}</p>
                     <p className="tabular text-sm font-semibold text-zinc-200">{s.value}</p>
                   </div>
                 ))}

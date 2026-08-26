@@ -110,7 +110,7 @@ function SectionCard({
         </div>
         <div>
           <h2 className="text-sm font-semibold text-zinc-100">{title}</h2>
-          {subtitle && <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-zinc-300 mt-0.5">{subtitle}</p>}
         </div>
       </div>
       {children}
@@ -121,9 +121,9 @@ function SectionCard({
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-zinc-500 mb-1.5">{label}</label>
+      <label className="block text-xs font-medium text-zinc-300 mb-1.5">{label}</label>
       {children}
-      {hint && <p className="text-xs text-zinc-600 mt-1.5 leading-relaxed">{hint}</p>}
+      {hint && <p className="text-xs text-zinc-400 mt-1.5 leading-relaxed">{hint}</p>}
     </div>
   );
 }
@@ -152,7 +152,7 @@ function NumInput({
         style={unit ? { paddingRight: `${unit.length * 7 + 24}px` } : undefined}
       />
       {unit && (
-        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500 pointer-events-none select-none">
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-300 pointer-events-none select-none">
           {unit}
         </span>
       )}
@@ -178,9 +178,9 @@ function PaceInput({
           max="20"
           className={`${inputCls} text-center`}
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-600 pointer-events-none">m</span>
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-400 pointer-events-none">m</span>
       </div>
-      <span className="text-zinc-600 font-mono text-sm">:</span>
+      <span className="text-zinc-400 font-mono text-sm">:</span>
       <div className="relative flex-1">
         <input
           type="number"
@@ -191,9 +191,9 @@ function PaceInput({
           max="59"
           className={`${inputCls} text-center`}
         />
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-600 pointer-events-none">s</span>
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-zinc-400 pointer-events-none">s</span>
       </div>
-      <span className="text-xs text-zinc-600 whitespace-nowrap">/km</span>
+      <span className="text-xs text-zinc-400 whitespace-nowrap">/km</span>
     </div>
   );
 }
@@ -209,7 +209,7 @@ function GenderPicker({ value, onChange }: { value: string; onChange: (v: string
           className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${
             value === g
               ? "bg-blue-600 text-white border border-blue-500"
-              : "bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
+              : "bg-zinc-800 text-zinc-200 border border-zinc-700 hover:border-zinc-500 hover:text-zinc-200"
           }`}
         >
           {g === "M" ? "Male" : g === "F" ? "Female" : "Other"}
@@ -304,11 +304,11 @@ export default function AthleteSettingsPage() {
             <span className="text-lg hidden sm:inline">🏔</span>
             <span className="font-semibold text-sm text-zinc-100 hidden sm:inline">Norwegian Method</span>
             <span className="text-zinc-700 hidden sm:inline">/</span>
-            <span className="text-sm text-zinc-400 hidden sm:inline">Athlete Profile</span>
+            <span className="text-sm text-zinc-200 hidden sm:inline">Athlete Profile</span>
           </div>
           <button
             onClick={() => { localStorage.removeItem(TOKEN_KEY); router.replace("/login"); }}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1"
+            className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors px-2 py-1"
           >
             Sign out
           </button>
@@ -320,12 +320,12 @@ export default function AthleteSettingsPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-sm font-semibold text-zinc-100">Athlete Profile</h1>
-            <p className="text-xs text-zinc-500 mt-0.5">
+            <p className="text-xs text-zinc-300 mt-0.5">
               Powers zone calculations, pct of HR max, and dashboard targets.
             </p>
           </div>
           {lastUpdated && (
-            <span suppressHydrationWarning className="text-xs text-zinc-600 whitespace-nowrap mt-0.5">
+            <span suppressHydrationWarning className="text-xs text-zinc-400 whitespace-nowrap mt-0.5">
               Saved {lastUpdated.slice(0, 10)}
             </span>
           )}
@@ -397,7 +397,7 @@ export default function AthleteSettingsPage() {
         >
           <div className="space-y-4">
             {/* HR thresholds */}
-            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Heart rate</p>
+            <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">Heart rate</p>
             <div className="grid grid-cols-2 gap-4">
               <Field
                 label="LT2 / LTHR baseline"
@@ -433,7 +433,7 @@ export default function AthleteSettingsPage() {
             </Field>
 
             {/* Pace thresholds */}
-            <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider pt-1">Pace</p>
+            <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider pt-1">Pace</p>
             <div className="grid grid-cols-2 gap-4">
               <Field label="LT1 pace" hint="Easy aerobic upper limit.">
                 <PaceInput
@@ -505,7 +505,7 @@ export default function AthleteSettingsPage() {
           }
         >
           <div className="space-y-4">
-            <p className="text-xs text-zinc-400 leading-relaxed">
+            <p className="text-xs text-zinc-200 leading-relaxed">
               After updating LT2, LT1, or Max HR above, use this to retroactively update
               Zone 1 / Zone 2 / Zone 3 seconds and HR% for all {recalc?.total ? `${recalc.total} ` : ""}activities
               that have a stored HR stream — no need to re-upload .fit files.
@@ -516,7 +516,7 @@ export default function AthleteSettingsPage() {
                 disabled={recalc?.status === "running"}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
                   recalc?.status === "running"
-                    ? "bg-zinc-700 text-zinc-400 cursor-not-allowed"
+                    ? "bg-zinc-700 text-zinc-200 cursor-not-allowed"
                     : "bg-teal-700 hover:bg-teal-600 text-white"
                 }`}
               >
@@ -527,9 +527,9 @@ export default function AthleteSettingsPage() {
               </button>
 
               {recalc && recalc.status !== "idle" && (
-                <div className="text-xs text-zinc-400 space-y-0.5">
+                <div className="text-xs text-zinc-200 space-y-0.5">
                   {recalc.status === "running" && (
-                    <p className="text-zinc-400">Processing activities…</p>
+                    <p className="text-zinc-200">Processing activities…</p>
                   )}
                   {(recalc.status === "success" || recalc.status === "partial") && (
                     <p className="text-green-400">

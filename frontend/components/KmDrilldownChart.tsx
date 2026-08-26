@@ -156,7 +156,7 @@ export default function KmDrilldownChart({ data }: Props) {
         >
           Monthly
         </button>
-        <span className="text-zinc-600">/</span>
+        <span className="text-zinc-400">/</span>
         {level === "week" ? (
           <span className="text-zinc-300">{monthLabel}</span>
         ) : (
@@ -167,7 +167,7 @@ export default function KmDrilldownChart({ data }: Props) {
             >
               {monthLabel}
             </button>
-            <span className="text-zinc-600">/</span>
+            <span className="text-zinc-400">/</span>
             <span className="text-zinc-300">{weekLabel(selectedWeek!)}</span>
           </>
         )}
@@ -186,9 +186,9 @@ export default function KmDrilldownChart({ data }: Props) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
       <div className="flex items-start justify-between mb-1">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">{title}</p>
+        <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">{title}</p>
         {level !== "day" && (
-          <p className="text-xs text-zinc-600 italic">double-click to drill down</p>
+          <p className="text-xs text-zinc-400 italic">double-click to drill down</p>
         )}
       </div>
 

@@ -16,7 +16,7 @@ export function WeeklyThresholdCard({ data }: { data: DashboardSummary | null })
         {fmtDuration(secs)}
       </div>
       <div className="mt-3">
-        <div className="flex justify-between text-xs text-zinc-500 mb-1">
+        <div className="flex justify-between text-xs text-zinc-300 mb-1">
           <span>{pct}% of target</span>
           <span>{fmtDuration(target)}</span>
         </div>
@@ -141,10 +141,10 @@ function Card({
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex flex-col">
       <div className="mb-3">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+        <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">
           {label}
         </p>
-        <p className="text-xs text-zinc-600 mt-0.5">{sublabel}</p>
+        <p className="text-xs text-zinc-400 mt-0.5">{sublabel}</p>
       </div>
       {children}
     </div>

@@ -54,12 +54,12 @@ function StatBadge({
 }) {
   return (
     <div className="flex flex-col items-center bg-zinc-800/50 rounded-lg px-4 py-2.5 min-w-[100px]">
-      <span className="text-[10px] text-zinc-500 mb-0.5">{formula}</span>
+      <span className="text-[10px] text-zinc-300 mb-0.5">{formula}</span>
       <span className="tabular font-semibold text-base" style={{ color }}>
         {value}
-        <span className="text-xs font-normal ml-0.5 text-zinc-400">{unit}</span>
+        <span className="text-xs font-normal ml-0.5 text-zinc-200">{unit}</span>
       </span>
-      <span className="text-[10px] text-zinc-500 mt-0.5">{label}</span>
+      <span className="text-[10px] text-zinc-300 mt-0.5">{label}</span>
     </div>
   );
 }
@@ -68,7 +68,7 @@ export default function HRVRollingChart({ data }: Props) {
   if (data.length === 0) {
     return (
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex items-center justify-center h-[320px]">
-        <p className="text-sm text-zinc-600">No HRV data available</p>
+        <p className="text-sm text-zinc-400">No HRV data available</p>
       </div>
     );
   }
@@ -83,10 +83,10 @@ export default function HRVRollingChart({ data }: Props) {
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+        <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">
           7-Day Rolling HRV Metrics
         </p>
-        <span className="text-[10px] text-zinc-600 italic">lnHRV · last 120 days</span>
+        <span className="text-[10px] text-zinc-400 italic">lnHRV · last 120 days</span>
       </div>
 
       {/* Current-value badges */}
@@ -222,7 +222,7 @@ export default function HRVRollingChart({ data }: Props) {
       </ResponsiveContainer>
 
       {/* Legend note */}
-      <p className="text-[10px] text-zinc-600 mt-3 text-center">
+      <p className="text-[10px] text-zinc-400 mt-3 text-center">
         Blue band = μ ± σ · Yellow dashed = CV% (right axis) · Green &lt;5% · Yellow 5–10% · Red &gt;10%
       </p>
     </div>

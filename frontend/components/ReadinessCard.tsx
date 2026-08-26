@@ -53,7 +53,7 @@ export default function ReadinessCard({ data }: Props) {
     return (
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-5 py-4 flex items-center gap-3">
         <div className="w-2.5 h-2.5 rounded-full bg-zinc-600 flex-shrink-0" />
-        <span className="text-sm text-zinc-500">Readiness unavailable — sync needed</span>
+        <span className="text-sm text-zinc-300">Readiness unavailable — sync needed</span>
       </div>
     );
   }
@@ -69,7 +69,7 @@ export default function ReadinessCard({ data }: Props) {
           <span className={`w-3 h-3 rounded-full ${cfg.dot} shadow-[0_0_8px_2px] shadow-current flex-shrink-0`} />
           <div>
             <p className={`text-sm font-semibold ${cfg.text}`}>{data.label}</p>
-            <p className="text-xs text-zinc-400 mt-0.5">{data.action}</p>
+            <p className="text-xs text-zinc-200 mt-0.5">{data.action}</p>
           </div>
         </div>
 
@@ -82,7 +82,7 @@ export default function ReadinessCard({ data }: Props) {
           <Pill active={data.chronic_sleep_debt} label={`Sleep₇d ${data.sleep_7d_mean_hrs?.toFixed(1)}h < 7h`} status="red" />
           <Pill active={data.acute_sleep_deficit} label={`Sleep₁d ${data.sleep_1d_hrs?.toFixed(1)}h < 85% baseline`} status="yellow" />
           {!data.high_autonomic_volatility && !data.chronic_sleep_debt && !data.acute_sleep_deficit && (
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] text-zinc-300">
               CV₇d {data.cv_7d?.toFixed(1)}% · Sleep₁d {data.sleep_1d_hrs?.toFixed(1)}h · Sleep₇d {data.sleep_7d_mean_hrs?.toFixed(1)}h
             </span>
           )}

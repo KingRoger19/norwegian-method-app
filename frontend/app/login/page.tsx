@@ -64,7 +64,7 @@ export default function LoginPage() {
               Norwegian Method
             </span>
           </div>
-          <p className="text-sm text-zinc-500">Training analytics dashboard</p>
+          <p className="text-sm text-zinc-300">Training analytics dashboard</p>
         </div>
 
         {/* Card */}
@@ -75,7 +75,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+              <label className="block text-xs font-medium text-zinc-200 mb-1.5">
                 Email
               </label>
               <input
@@ -90,7 +90,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+              <label className="block text-xs font-medium text-zinc-200 mb-1.5">
                 Password
               </label>
               <input
@@ -114,7 +114,7 @@ export default function LoginPage() {
               />
               <label
                 htmlFor="remember"
-                className="text-sm text-zinc-400 cursor-pointer select-none"
+                className="text-sm text-zinc-200 cursor-pointer select-none"
               >
                 Remember me
               </label>
@@ -143,7 +143,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-4 text-center text-xs text-zinc-600">
+        <p className="mt-4 text-center text-xs text-zinc-400">
           Coros Hub · Norwegian Method Analytics
         </p>
       </div>

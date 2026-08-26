@@ -31,7 +31,7 @@ export default function Zone2TrendChart({ data }: Props) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
       <div className="flex items-center justify-between mb-1">
-        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+        <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">
           Weekly Zone 2 Volume
         </p>
         {hasTarget && (
@@ -42,11 +42,11 @@ export default function Zone2TrendChart({ data }: Props) {
                 stroke="#52525b" strokeWidth="1.5" strokeDasharray="4 3"
               />
             </svg>
-            <span className="text-xs text-zinc-500">Target {targetMins} min</span>
+            <span className="text-xs text-zinc-300">Target {targetMins} min</span>
           </div>
         )}
       </div>
-      <p className="text-xs text-zinc-600 mb-4">
+      <p className="text-xs text-zinc-400 mb-4">
         Last 12 weeks · minutes in threshold zone · faded bar = current week in progress
       </p>
 

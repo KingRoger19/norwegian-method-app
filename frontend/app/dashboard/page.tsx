@@ -184,7 +184,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
-          <p className="text-sm text-zinc-500">Loading dashboard…</p>
+          <p className="text-sm text-zinc-300">Loading dashboard…</p>
         </div>
       </div>
     );
@@ -202,14 +202,14 @@ export default function DashboardPage() {
               Norwegian Method
             </span>
             <span className="text-zinc-700 hidden sm:inline">/</span>
-            <span className="text-sm text-zinc-400 hidden sm:inline">Dashboard</span>
+            <span className="text-sm text-zinc-200 hidden sm:inline">Dashboard</span>
           </div>
           <div className="flex items-center gap-3">
             <SyncButton onSyncComplete={fetchAll} />
             <UploadFitButton onImportComplete={fetchAll} />
             <button
               onClick={handleSignOut}
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors px-2 py-1"
+              className="text-xs text-zinc-300 hover:text-zinc-100 transition-colors px-2 py-1"
             >
               Sign out
             </button>
@@ -232,7 +232,7 @@ export default function DashboardPage() {
 
         {/* ── KPI Cards ── */}
         <section>
-          <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+          <h2 className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-3">
             Current Week
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
@@ -249,7 +249,7 @@ export default function DashboardPage() {
 
         {/* ── Charts ── */}
         <section>
-          <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+          <h2 className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-3">
             Analytics
           </h2>
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
@@ -285,7 +285,7 @@ export default function DashboardPage() {
 
         {/* ── Distance Drill-down ── */}
         <section>
-          <h2 className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-3">
+          <h2 className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-3">
             Distance
           </h2>
           {dailyDistance.length > 0 ? (
@@ -336,12 +336,12 @@ function ChartSkeleton({
 }) {
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-      <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider mb-4">
+      <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider mb-4">
         {label}
       </p>
       <div className="h-[240px] flex items-center justify-center">
         {empty ? (
-          <p className="text-sm text-zinc-600">No data available</p>
+          <p className="text-sm text-zinc-400">No data available</p>
         ) : (
           <div className="w-8 h-8 border-2 border-zinc-700 border-t-blue-500 rounded-full animate-spin" />
         )}
