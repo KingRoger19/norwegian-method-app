@@ -149,9 +149,37 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
         {/* Charts */}
         <div className="p-6 space-y-6">
           {chartData.length === 0 ? (
-            <p className="text-sm text-zinc-400 text-center py-8">
-              No time-series data for this activity
-            </p>
+            <div className="space-y-4">
+              {(() => {
+                const avgPace =
+                  activity.distance_km > 0
+                    ? activity.duration_seconds / 60 / activity.distance_km
+                    : null;
+                const fmtAvgPace = avgPace
+                  ? `${Math.floor(avgPace)}:${String(Math.round((avgPace % 1) * 60)).padStart(2, "0")} /km`
+                  : null;
+                const summaryStats = [
+                  { label: "Avg Pace", value: fmtAvgPace },
+                  { label: "Avg HR", value: activity.avg_hr ? `${activity.avg_hr} bpm` : null },
+                  { label: "Max HR", value: activity.max_hr ? `${activity.max_hr} bpm` : null },
+                  { label: "Avg Power", value: activity.avg_power ? `${activity.avg_power} W` : null },
+                ].filter((s): s is { label: string; value: string } => s.value !== null);
+                return summaryStats.length > 0 ? (
+                  <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+                    {summaryStats.map((s) => (
+                      <div key={s.label} className="bg-zinc-800/40 rounded-lg p-3 text-center">
+                        <p className="text-xs text-zinc-400 mb-1">{s.label}</p>
+                        <p className="text-sm font-semibold text-zinc-200">{s.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null;
+              })()}
+              <div className="text-center py-6 border border-dashed border-zinc-800 rounded-lg">
+                <p className="text-sm text-zinc-400 mb-1">No per-second data available</p>
+                <p className="text-xs text-zinc-600">Upload a .fit file to enable HR, pace, and GPS charts</p>
+              </div>
+            </div>
           ) : (
             <>
               {/* HR chart */}

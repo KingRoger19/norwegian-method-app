@@ -168,7 +168,7 @@ export default function DashboardPage() {
       const detail = await getActivity(id);
       setSelectedActivity(detail);
     } catch {
-      // silently fail — activity might have no detail
+      setError("Could not load activity detail. Try again.");
     } finally {
       setModalLoading(false);
     }

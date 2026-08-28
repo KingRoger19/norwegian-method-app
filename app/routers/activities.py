@@ -29,7 +29,7 @@ def _summary_to_dict(a: ActivitySummary) -> dict[str, Any]:
     return {
         "activity_id": a.activity_id,
         "date": a.date.isoformat(),
-        "start_time": a.start_time.isoformat(),
+        "start_time": a.start_time.isoformat() if a.start_time else "",
         "duration_seconds": a.duration_seconds,
         "duration_formatted": _fmt_duration(a.duration_seconds),
         "distance_km": round(a.distance_meters / 1000, 2) if a.distance_meters else 0,
