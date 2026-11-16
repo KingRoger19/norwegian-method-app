@@ -8,6 +8,7 @@ import {
   getActivitiesCount,
   updateActivityLactate,
   bulkDeleteActivities,
+  ACTIVITY_TAGS,
   type Activity,
   type LactateFields,
 } from "@/lib/api";
@@ -27,8 +28,11 @@ export default function AdvancedMetricsPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [edits, setEdits] = useState<Record<string, Partial<LactateFields>>>({});
+  const [edits, setEdits] = useState<Record<string, Partial<LactateFields> & { activity_tag?: string | null }>>({});
   const [rowStatus, setRowStatus] = useState<Record<string, RowStatus>>({});
+
+  // Tag filter
+  const [tagFilter, setTagFilter] = useState<string>("");
 
   // Select-to-delete mode
   const [selectMode, setSelectMode] = useState(false);
@@ -38,12 +42,13 @@ export default function AdvancedMetricsPage() {
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  const fetchPage = useCallback(async (p: number) => {
+  const fetchPage = useCallback(async (p: number, tag?: string) => {
     setLoading(true);
     try {
+      const activeTag = tag ?? tagFilter;
       const [items, { total: t }] = await Promise.all([
-        listActivities(PAGE_SIZE, p * PAGE_SIZE),
-        getActivitiesCount(),
+        listActivities(PAGE_SIZE, p * PAGE_SIZE, undefined, activeTag || undefined),
+        getActivitiesCount(undefined, activeTag || undefined),
       ]);
       setActivities(items);
       setTotal(t);
@@ -52,7 +57,8 @@ export default function AdvancedMetricsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tagFilter]);
 
   useEffect(() => {
     if (!localStorage.getItem(TOKEN_KEY)) {
@@ -106,9 +112,9 @@ export default function AdvancedMetricsPage() {
     if (!rowEdits || Object.keys(rowEdits).length === 0) return;
     setRowStatus((p) => ({ ...p, [id]: "saving" }));
     try {
-      await updateActivityLactate(id, rowEdits);
+      await updateActivityLactate(id, rowEdits as Parameters<typeof updateActivityLactate>[1]);
       setActivities((prev) =>
-        prev.map((a) => (a.activity_id === id ? { ...a, ...rowEdits } : a))
+        prev.map((a) => (a.activity_id === id ? { ...a, ...(rowEdits as Partial<Activity>) } : a))
       );
       setEdits((prev) => {
         const next = { ...prev };
@@ -134,6 +140,12 @@ export default function AdvancedMetricsPage() {
   function handleSignOut() {
     localStorage.removeItem(TOKEN_KEY);
     router.replace("/login");
+  }
+
+  function handleTagFilter(tag: string) {
+    setTagFilter(tag);
+    setPage(0);
+    fetchPage(0, tag);
   }
 
   function toggleSelectMode() {
@@ -268,6 +280,33 @@ export default function AdvancedMetricsPage() {
           </div>
         </div>
 
+        {/* Tag filter */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => handleTagFilter("")}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+              tagFilter === ""
+                ? "bg-zinc-100 text-zinc-900 border-zinc-200"
+                : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+            }`}
+          >
+            All
+          </button>
+          {ACTIVITY_TAGS.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => handleTagFilter(tag)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors border ${
+                tagFilter === tag
+                  ? "bg-blue-600 text-white border-blue-500"
+                  : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+              }`}
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+
         {/* Table */}
         <div className="overflow-x-auto rounded-xl border border-zinc-800">
           <table className="w-full text-xs border-collapse">
@@ -284,6 +323,7 @@ export default function AdvancedMetricsPage() {
                   </th>
                 )}
                 <th className="text-left px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Date</th>
+                <th className="text-left px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Tag</th>
                 <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Dist</th>
                 <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Duration</th>
                 <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Avg HR</th>
@@ -340,6 +380,40 @@ export default function AdvancedMetricsPage() {
                       {/* Fixed columns */}
                       <td className="px-3 py-2 whitespace-nowrap text-zinc-300 font-medium">
                         {a.date}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        {selectMode ? (
+                          a.activity_tag ? (
+                            <span className="text-xs text-zinc-300">{a.activity_tag}</span>
+                          ) : (
+                            <span className="text-zinc-600 text-xs">—</span>
+                          )
+                        ) : (
+                          <select
+                            value={
+                              edits[a.activity_id] && "activity_tag" in edits[a.activity_id]
+                                ? (edits[a.activity_id].activity_tag as string) ?? ""
+                                : a.activity_tag ?? ""
+                            }
+                            onChange={(e) => {
+                              const val = e.target.value || null;
+                              setEdits((prev) => {
+                                const rowEdits = { ...(prev[a.activity_id] ?? {}), activity_tag: val };
+                                if (val === a.activity_tag) delete (rowEdits as Record<string, unknown>).activity_tag;
+                                if (Object.keys(rowEdits).length === 0) {
+                                  const next = { ...prev }; delete next[a.activity_id]; return next;
+                                }
+                                return { ...prev, [a.activity_id]: rowEdits };
+                              });
+                            }}
+                            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 focus:outline-none focus:border-blue-500 transition-colors"
+                          >
+                            <option value="">— no tag —</option>
+                            {ACTIVITY_TAGS.map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                        )}
                       </td>
                       <td className="px-3 py-2 text-right tabular-nums text-zinc-200">
                         {a.distance_km} km

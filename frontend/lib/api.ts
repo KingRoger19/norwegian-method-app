@@ -53,6 +53,20 @@ export interface LactateFields {
   lactate_5_notes: string | null;
 }
 
+export const ACTIVITY_TAGS = [
+  "Slow run",
+  "Long run",
+  "Threshold",
+  "Interval",
+  "Race",
+  "Fartlek",
+  "Sprint hills",
+  "Tempo run",
+  "Varied tempo run",
+] as const;
+
+export type ActivityTag = (typeof ACTIVITY_TAGS)[number];
+
 export interface Activity extends LactateFields {
   activity_id: string;
   date: string;
@@ -72,6 +86,7 @@ export interface Activity extends LactateFields {
   zone2_pct: number | null;
   total_ascent: number | null;
   avg_power: number | null;
+  activity_tag: string | null;
 }
 
 export interface StreamData {
@@ -187,15 +202,20 @@ export interface DailyDistance {
 export const getDailyDistance = (months = 60) =>
   apiFetch<DailyDistance[]>(`/activities/daily-distance?months=${months}`);
 
-export const listActivities = (limit = 10, offset = 0, since?: string) =>
-  apiFetch<Activity[]>(
-    `/activities/?limit=${limit}&offset=${offset}${since ? `&since=${since}` : ""}`
-  );
+export const listActivities = (limit = 10, offset = 0, since?: string, tag?: string) => {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  if (since) params.set("since", since);
+  if (tag) params.set("tag", tag);
+  return apiFetch<Activity[]>(`/activities/?${params}`);
+};
 
-export const getActivitiesCount = (since?: string) =>
-  apiFetch<{ total: number }>(
-    `/activities/count${since ? `?since=${since}` : ""}`
-  );
+export const getActivitiesCount = (since?: string, tag?: string) => {
+  const params = new URLSearchParams();
+  if (since) params.set("since", since);
+  if (tag) params.set("tag", tag);
+  const qs = params.toString();
+  return apiFetch<{ total: number }>(`/activities/count${qs ? `?${qs}` : ""}`);
+};
 
 export const getActivity = (id: string) =>
   apiFetch<ActivityDetail>(`/activities/${id}`);
@@ -299,11 +319,11 @@ export const createWikiComment = (data: {
 export const deleteWikiComment = (id: number) =>
   apiFetch<{ ok: boolean }>(`/wiki/comments/${id}`, { method: "DELETE" });
 
-// ── Lactate ───────────────────────────────────────────────────────────────────
+// ── Activity updates (lactate + tag) ─────────────────────────────────────────
 
 export async function updateActivityLactate(
   id: string,
-  fields: Partial<LactateFields>
+  fields: Partial<LactateFields> & { activity_tag?: string | null }
 ): Promise<void> {
   await apiFetch(`/activities/${id}`, {
     method: "PATCH",

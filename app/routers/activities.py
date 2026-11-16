@@ -45,6 +45,7 @@ def _summary_to_dict(a: ActivitySummary) -> dict[str, Any]:
         "zone2_pct": _z2_pct(a.zone1_secs, a.zone2_secs, a.zone3_secs, a.duration_seconds),
         "total_ascent": a.total_ascent,
         "avg_power": a.avg_power,
+        "activity_tag": a.activity_tag,
         # lactate measurements (manually entered)
         "lactate_1_mmol": a.lactate_1_mmol,
         "lactate_1_notes": a.lactate_1_notes,
@@ -59,6 +60,12 @@ def _summary_to_dict(a: ActivitySummary) -> dict[str, Any]:
     }
 
 
+VALID_TAGS = {
+    "Slow run", "Long run", "Threshold", "Interval", "Race",
+    "Fartlek", "Sprint hills", "Tempo run", "Varied tempo run",
+}
+
+
 class LactateUpdate(BaseModel):
     lactate_1_mmol: float | None = None
     lactate_1_notes: str | None = None
@@ -70,6 +77,7 @@ class LactateUpdate(BaseModel):
     lactate_4_notes: str | None = None
     lactate_5_mmol: float | None = None
     lactate_5_notes: str | None = None
+    activity_tag: str | None = None
 
 
 # /count and /daily-distance must be declared before /{activity_id}
@@ -98,11 +106,14 @@ async def daily_distance(
 @router.get("/count")
 async def count_activities(
     since: date | None = Query(default=None),
+    tag: str | None = Query(default=None),
 ) -> dict[str, int]:
     async with AsyncSessionLocal() as session:
         q = select(func.count()).select_from(ActivitySummary)
         if since:
             q = q.where(ActivitySummary.date >= since)
+        if tag:
+            q = q.where(ActivitySummary.activity_tag == tag)
         total = (await session.execute(q)).scalar_one()
     return {"total": total}
 
@@ -112,6 +123,7 @@ async def list_activities(
     limit: int = Query(default=10, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     since: date | None = Query(default=None),
+    tag: str | None = Query(default=None),
 ) -> list[dict[str, Any]]:
     async with AsyncSessionLocal() as session:
         q = (
@@ -122,6 +134,8 @@ async def list_activities(
         )
         if since:
             q = q.where(ActivitySummary.date >= since)
+        if tag:
+            q = q.where(ActivitySummary.activity_tag == tag)
         rows = (await session.execute(q)).scalars().all()
     return [_summary_to_dict(a) for a in rows]
 
@@ -154,6 +168,9 @@ async def update_activity_lactate(
     updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=422, detail="No fields provided")
+    if "activity_tag" in updates and updates["activity_tag"] is not None:
+        if updates["activity_tag"] not in VALID_TAGS:
+            raise HTTPException(status_code=422, detail=f"Invalid tag. Valid: {sorted(VALID_TAGS)}")
 
     async with AsyncSessionLocal() as session:
         async with session.begin():

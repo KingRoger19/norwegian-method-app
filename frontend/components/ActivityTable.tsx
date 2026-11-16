@@ -44,7 +44,7 @@ export default function ActivityTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-zinc-800">
-              {["Date", "Activity", "Distance", "Duration", "Avg HR", "Z2%"].map(
+              {["Date", "Tag", "Distance", "Duration", "Avg HR", "Z2%"].map(
                 (h) => (
                   <th
                     key={h}
@@ -75,8 +75,14 @@ export default function ActivityTable({
                 <td className="px-4 py-3 text-zinc-200 whitespace-nowrap tabular">
                   {fmtShortDate(a.date)}
                 </td>
-                <td className="px-4 py-3 text-zinc-200 whitespace-nowrap">
-                  🏃 Run
+                <td className="px-4 py-3 whitespace-nowrap">
+                  {a.activity_tag ? (
+                    <span className="inline-block text-xs px-2 py-0.5 rounded-full bg-blue-900/50 text-blue-300 border border-blue-800/60">
+                      {a.activity_tag}
+                    </span>
+                  ) : (
+                    <span className="text-zinc-600 text-xs">—</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-zinc-200 whitespace-nowrap tabular">
                   {a.distance_km.toFixed(1)} km

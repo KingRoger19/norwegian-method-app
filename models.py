@@ -100,6 +100,7 @@ class ActivitySummary(Base):
     lactate_4_notes: Mapped[Optional[str]] = mapped_column(String)
     lactate_5_mmol: Mapped[Optional[float]] = mapped_column(Float)
     lactate_5_notes: Mapped[Optional[str]] = mapped_column(String)
+    activity_tag: Mapped[Optional[str]] = mapped_column(String(50))
 
     daily_metrics: Mapped["DailyMetrics"] = relationship(back_populates="activities")
     time_series: Mapped[Optional["ActivityTimeSeries"]] = relationship(back_populates="activity")
