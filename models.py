@@ -125,10 +125,13 @@ class IntervalAnalysis(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     activity_id: Mapped[str] = mapped_column(String(50), ForeignKey("activity_summaries.activity_id"), nullable=False)
     description: Mapped[Optional[str]] = mapped_column(String)
+    interval_type: Mapped[str] = mapped_column(String(10), server_default=text("'time'"))
     warmup_secs: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     reps: Mapped[int] = mapped_column(Integer, nullable=False)
-    effort_secs: Mapped[int] = mapped_column(Integer, nullable=False)
-    recovery_secs: Mapped[int] = mapped_column(Integer, nullable=False)
+    effort_secs: Mapped[Optional[int]] = mapped_column(Integer)
+    recovery_secs: Mapped[Optional[int]] = mapped_column(Integer)
+    effort_meters: Mapped[Optional[int]] = mapped_column(Integer)
+    recovery_meters: Mapped[Optional[int]] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), server_default=text("NOW()"))
 
     sets: Mapped[list["IntervalSet"]] = relationship(

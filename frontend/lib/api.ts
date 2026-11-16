@@ -243,20 +243,26 @@ export interface IntervalAnalysis {
   id: number;
   activity_id: string;
   description: string | null;
+  interval_type: "time" | "distance";
   warmup_secs: number;
   reps: number;
-  effort_secs: number;
-  recovery_secs: number;
+  effort_secs: number | null;
+  recovery_secs: number | null;
+  effort_meters: number | null;
+  recovery_meters: number | null;
   created_at: string;
   sets: IntervalSet[];
 }
 
 export interface IntervalAnalysisRequest {
   description?: string;
+  interval_type: "time" | "distance";
   warmup_secs: number;
   reps: number;
-  effort_secs: number;
-  recovery_secs: number;
+  effort_secs?: number;
+  recovery_secs?: number;
+  effort_meters?: number;
+  recovery_meters?: number;
 }
 
 export const getIntervalAnalysis = (activityId: string) =>
