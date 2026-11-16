@@ -245,14 +245,16 @@ export interface IntervalAnalysis {
   id: number;
   activity_id: string;
   description: string | null;
-  interval_type: "time" | "distance" | "auto";
-  warmup_secs: number;
-  cooldown_secs: number;
+  interval_type: "manual" | "auto";
   reps: number | null;
-  effort_secs: number | null;
-  recovery_secs: number | null;
-  effort_meters: number | null;
-  recovery_meters: number | null;
+  warmup_value: number;
+  warmup_unit: "s" | "min" | "m" | "km";
+  cooldown_value: number;
+  cooldown_unit: "s" | "min" | "m" | "km";
+  effort_value: number | null;
+  effort_unit: "s" | "min" | "m" | "km";
+  recovery_value: number | null;
+  recovery_unit: "s" | "min" | "m" | "km";
   effort_hr_threshold: number | null;
   created_at: string;
   sets: IntervalSet[];
@@ -260,14 +262,16 @@ export interface IntervalAnalysis {
 
 export interface IntervalAnalysisRequest {
   description?: string;
-  interval_type: "time" | "distance" | "auto";
-  warmup_secs: number;
-  cooldown_secs: number;
+  interval_type: "manual" | "auto";
+  warmup_value: number;
+  warmup_unit: "s" | "min" | "m" | "km";
+  cooldown_value: number;
+  cooldown_unit: "s" | "min" | "m" | "km";
   reps?: number;
-  effort_secs?: number;
-  recovery_secs?: number;
-  effort_meters?: number;
-  recovery_meters?: number;
+  effort_value?: number;
+  effort_unit?: "s" | "min" | "m" | "km";
+  recovery_value?: number;
+  recovery_unit?: "s" | "min" | "m" | "km";
   effort_hr_threshold?: number;
 }
 
@@ -276,6 +280,24 @@ export const getIntervalAnalysis = (activityId: string) =>
 
 export const createIntervalAnalysis = (activityId: string, req: IntervalAnalysisRequest) =>
   apiFetch<IntervalAnalysis>(`/activities/${activityId}/interval-analysis`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+
+export interface DescribeIntervalRequest {
+  natural_description: string;
+  warmup_value: number;
+  warmup_unit: "s" | "min" | "m" | "km";
+  cooldown_value: number;
+  cooldown_unit: "s" | "min" | "m" | "km";
+}
+
+export interface IntervalAnalysisWithText extends IntervalAnalysis {
+  analysis_text?: string;
+}
+
+export const analyzeFromDescription = (activityId: string, req: DescribeIntervalRequest) =>
+  apiFetch<IntervalAnalysisWithText>(`/activities/${activityId}/interval-analysis/from-description`, {
     method: "POST",
     body: JSON.stringify(req),
   });

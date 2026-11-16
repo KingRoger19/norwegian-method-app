@@ -30,5 +30,8 @@ class Settings(BaseSettings):
     coach_username: str = ""
     coach_password: str = ""
 
+    # Anthropic API key for interval analysis LLM features
+    anthropic_api_key: str = ""
+
 
 settings = Settings()
