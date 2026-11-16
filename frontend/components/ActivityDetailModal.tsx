@@ -618,16 +618,29 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                     {analysis.warmup_secs > 0 && ` · ${fmtSecs(analysis.warmup_secs)} warmup`}
                     <span className="ml-2 uppercase tracking-wide text-zinc-600">{analysis.interval_type}</span>
                   </p>
+                  {(() => {
+                    const hrrCols = (
+                      [
+                        { key: "hrr30" as const, label: "HRR30", color: "text-emerald-400" },
+                        { key: "hrr60" as const, label: "HRR60", color: "text-blue-400" },
+                        { key: "hrr90" as const, label: "HRR90", color: "text-violet-400" },
+                        { key: "hrr120" as const, label: "HRR120", color: "text-amber-400" },
+                      ] as const
+                    ).filter((col) => analysis.sets.some((s) => s[col.key] !== null));
+                    const avg = (key: keyof typeof analysis.sets[0]) => {
+                      const vals = analysis.sets.map((s) => s[key]).filter((v): v is number => v !== null);
+                      return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+                    };
+                    return (
                   <div className="overflow-x-auto rounded-lg border border-zinc-800">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="bg-zinc-800/60 border-b border-zinc-700">
                           <th className="px-3 py-2 text-left text-zinc-300 font-medium">Set</th>
                           <th className="px-3 py-2 text-center text-zinc-300 font-medium">Peak HR</th>
-                          <th className="px-3 py-2 text-center text-emerald-400 font-medium">HRR30</th>
-                          <th className="px-3 py-2 text-center text-blue-400 font-medium">HRR60</th>
-                          <th className="px-3 py-2 text-center text-violet-400 font-medium">HRR90</th>
-                          <th className="px-3 py-2 text-center text-amber-400 font-medium">HRR120</th>
+                          {hrrCols.map((c) => (
+                            <th key={c.key} className={`px-3 py-2 text-center font-medium ${c.color}`}>{c.label}</th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
@@ -637,44 +650,35 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                             <td className="px-3 py-2 text-center tabular text-zinc-200">
                               {s.peak_hr !== null ? `${s.peak_hr} bpm` : "—"}
                             </td>
-                            <td className="px-3 py-2 text-center tabular">
-                              <HrrCell value={s.hrr30} />
-                            </td>
-                            <td className="px-3 py-2 text-center tabular">
-                              <HrrCell value={s.hrr60} />
-                            </td>
-                            <td className="px-3 py-2 text-center tabular">
-                              <HrrCell value={s.hrr90} />
-                            </td>
-                            <td className="px-3 py-2 text-center tabular">
-                              <HrrCell value={s.hrr120} />
-                            </td>
+                            {hrrCols.map((c) => (
+                              <td key={c.key} className="px-3 py-2 text-center tabular">
+                                <HrrCell value={s[c.key]} />
+                              </td>
+                            ))}
                           </tr>
                         ))}
                         {/* Averages row */}
-                        {analysis.sets.length > 1 && (() => {
-                          const avg = (key: keyof typeof analysis.sets[0]) => {
-                            const vals = analysis.sets.map((s) => s[key]).filter((v): v is number => v !== null);
-                            return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
-                          };
-                          return (
-                            <tr className="bg-zinc-800/40 border-t border-zinc-700">
-                              <td className="px-3 py-2 text-zinc-400 font-medium text-xs italic">avg</td>
-                              <td className="px-3 py-2 text-center tabular text-zinc-400">
-                                {avg("peak_hr") !== null ? `${avg("peak_hr")} bpm` : "—"}
+                        {analysis.sets.length > 1 && (
+                          <tr className="bg-zinc-800/40 border-t border-zinc-700">
+                            <td className="px-3 py-2 text-zinc-400 font-medium text-xs italic">avg</td>
+                            <td className="px-3 py-2 text-center tabular text-zinc-400">
+                              {avg("peak_hr") !== null ? `${avg("peak_hr")} bpm` : "—"}
+                            </td>
+                            {hrrCols.map((c) => (
+                              <td key={c.key} className="px-3 py-2 text-center tabular">
+                                <HrrCell value={avg(c.key)} muted />
                               </td>
-                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr30")} muted /></td>
-                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr60")} muted /></td>
-                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr90")} muted /></td>
-                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr120")} muted /></td>
-                            </tr>
-                          );
-                        })()}
+                            ))}
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
+                    );
+                  })()}
                   <p className="text-[10px] text-zinc-500 mt-2">
                     HRR = Peak HR − HR at T seconds after effort end. Higher = faster recovery.
+                    {" "}Columns hidden when recovery is too short to measure them.
                   </p>
                 </div>
               )}

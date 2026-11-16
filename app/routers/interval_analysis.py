@@ -114,6 +114,9 @@ def _compute_time_sets(
         peak_hr = max(effort_hrs) if effort_hrs else None
         hrr: dict[int, int | None] = {}
         for t in (30, 60, 90, 120):
+            if t >= recovery_secs:
+                hrr[t] = None
+                continue
             hr = _hr_at(hr_lookup, effort_end + t, max_offset)
             hrr[t] = (peak_hr - hr) if (peak_hr is not None and hr is not None) else None
         sets.append({"set_number": rep, "peak_hr": peak_hr, "hrr30": hrr[30], "hrr60": hrr[60], "hrr90": hrr[90], "hrr120": hrr[120]})
@@ -145,16 +148,21 @@ def _compute_distance_sets(
         effort_hrs = [hr_lookup[s] for s in range(current_offset, effort_end_offset + 1) if s in hr_lookup]
         peak_hr = max(effort_hrs) if effort_hrs else None
 
+        # Advance to end of recovery first so we know the actual elapsed recovery time
+        end_dist = dist_lookup.get(effort_end_offset, current_dist + effort_meters)
+        recovery_end_offset = _find_offset_at_distance(dist_lookup, end_dist, recovery_meters)
+        actual_recovery_secs = (recovery_end_offset - effort_end_offset) if recovery_end_offset is not None else 0
+
         hrr: dict[int, int | None] = {}
         for t in (30, 60, 90, 120):
+            if t >= actual_recovery_secs:
+                hrr[t] = None
+                continue
             hr = _hr_at(hr_lookup, effort_end_offset + t, max_offset)
             hrr[t] = (peak_hr - hr) if (peak_hr is not None and hr is not None) else None
 
         sets.append({"set_number": rep, "peak_hr": peak_hr, "hrr30": hrr[30], "hrr60": hrr[60], "hrr90": hrr[90], "hrr120": hrr[120]})
 
-        # Advance to end of recovery
-        end_dist = dist_lookup.get(effort_end_offset, current_dist + effort_meters)
-        recovery_end_offset = _find_offset_at_distance(dist_lookup, end_dist, recovery_meters)
         if recovery_end_offset is None:
             break
         current_dist = dist_lookup.get(recovery_end_offset, end_dist + recovery_meters)
@@ -273,33 +281,34 @@ async def create_interval_analysis(
             recovery_meters=body.recovery_meters,
         )
 
-        async with session.begin():
-            await session.execute(
-                delete(IntervalAnalysis).where(IntervalAnalysis.activity_id == activity_id)
-            )
-            analysis = IntervalAnalysis(
-                activity_id=activity_id,
-                description=body.description,
-                interval_type=body.interval_type,
-                warmup_secs=body.warmup_secs,
-                reps=body.reps,
-                effort_secs=body.effort_secs,
-                recovery_secs=body.recovery_secs,
-                effort_meters=body.effort_meters,
-                recovery_meters=body.recovery_meters,
-            )
-            session.add(analysis)
-            await session.flush()
-            for s in set_data:
-                session.add(IntervalSet(
-                    analysis_id=analysis.id,
-                    set_number=s["set_number"],
-                    peak_hr=s["peak_hr"],
-                    hrr30=s["hrr30"],
-                    hrr60=s["hrr60"],
-                    hrr90=s["hrr90"],
-                    hrr120=s["hrr120"],
-                ))
+        # autobegin is already active from the reads above — just write and commit
+        await session.execute(
+            delete(IntervalAnalysis).where(IntervalAnalysis.activity_id == activity_id)
+        )
+        analysis = IntervalAnalysis(
+            activity_id=activity_id,
+            description=body.description,
+            interval_type=body.interval_type,
+            warmup_secs=body.warmup_secs,
+            reps=body.reps,
+            effort_secs=body.effort_secs,
+            recovery_secs=body.recovery_secs,
+            effort_meters=body.effort_meters,
+            recovery_meters=body.recovery_meters,
+        )
+        session.add(analysis)
+        await session.flush()
+        for s in set_data:
+            session.add(IntervalSet(
+                analysis_id=analysis.id,
+                set_number=s["set_number"],
+                peak_hr=s["peak_hr"],
+                hrr30=s["hrr30"],
+                hrr60=s["hrr60"],
+                hrr90=s["hrr90"],
+                hrr120=s["hrr120"],
+            ))
+        await session.commit()
 
         async with AsyncSessionLocal() as s2:
             fresh = (
