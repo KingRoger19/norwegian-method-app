@@ -145,7 +145,7 @@ export interface HrvRolling {
   mu_7d: number;
   sigma_7d: number;
   cv_7d: number;
-  z_score: number;
+  z_score: number | null;
 }
 
 export const getHrvRolling = (days = 60) =>

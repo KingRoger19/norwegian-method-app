@@ -24,7 +24,7 @@ interface ChartPoint {
   mu_7d: number;
   sigma_7d: number;
   cv_7d: number;
-  z_score: number;
+  z_score: number | null;
   band_lower: number;
   band_width: number;
 }
@@ -36,7 +36,7 @@ function buildChartData(data: HrvRolling[]): ChartPoint[] {
     mu_7d: d.mu_7d,
     sigma_7d: d.sigma_7d,
     cv_7d: d.cv_7d,
-    z_score: d.z_score,
+    z_score: d.z_score ?? null,
     band_lower: Math.max(0, d.mu_7d - d.sigma_7d),
     band_width: 2 * d.sigma_7d,
   }));
@@ -121,19 +121,21 @@ export default function HRVRollingChart({ data }: Props) {
               : "#f87171"
           }
         />
-        <StatBadge
-          formula="Z₇d"
-          label="Z-Score"
-          value={(latest.z_score >= 0 ? "+" : "") + latest.z_score.toFixed(2)}
-          unit="σ"
-          color={
-            latest.z_score >= 1
-              ? "#4ade80"
-              : latest.z_score <= -1
-              ? "#f87171"
-              : "#facc15"
-          }
-        />
+        {latest.z_score != null && (
+          <StatBadge
+            formula="Z₇d"
+            label="Z-Score"
+            value={(latest.z_score >= 0 ? "+" : "") + latest.z_score.toFixed(2)}
+            unit="σ"
+            color={
+              latest.z_score >= 1
+                ? "#4ade80"
+                : latest.z_score <= -1
+                ? "#f87171"
+                : "#facc15"
+            }
+          />
+        )}
       </div>
 
       {/* Chart */}

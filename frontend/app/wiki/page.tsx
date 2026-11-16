@@ -157,6 +157,18 @@ const SECTIONS: Section[] = [
           { label: "Volatile", color: "red", condition: "CV₇d > 10%" },
         ],
       },
+      {
+        name: "Z₇d — 7-day HRV Z-Score",
+        formula: "Z₇d = (ln(HRV_today) − μ₇d) / σ₇d",
+        description:
+          "How far today's ln(HRV) sits from your personal 7-day rolling mean, measured in standard deviations. A positive Z-score means today's HRV is above your recent baseline (good recovery); a negative score means below baseline (fatigue or stress). Unlike raw HRV, this metric is self-normalising — it accounts for your individual variability, so the same Z-score means the same thing regardless of your absolute HRV level.",
+        thresholds: [
+          { label: "Well recovered", color: "green", condition: "Z₇d ≥ +1.0σ" },
+          { label: "Within normal range", color: "amber", condition: "−1.0σ < Z₇d < +1.0σ" },
+          { label: "Below baseline", color: "red", condition: "Z₇d ≤ −1.0σ" },
+        ],
+        note: "Z-score is plotted as the yellow dashed line on the HRV chart (right axis, range −3 to +3). The dashed green/red reference lines mark the ±1σ thresholds.",
+      },
     ],
   },
   {
