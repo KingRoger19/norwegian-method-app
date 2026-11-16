@@ -23,7 +23,7 @@ export default function ActivityMap({ latLong }: Props) {
       if (!document.querySelector('link[href*="leaflet"]')) {
         const link = document.createElement("link");
         link.rel = "stylesheet";
-        link.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+        link.href = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css";
         document.head.appendChild(link);
       }
 
@@ -37,10 +37,10 @@ export default function ActivityMap({ latLong }: Props) {
       mapRef.current = map;
 
       L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
         {
           attribution:
-            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
+            '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
           maxZoom: 19,
         }
       ).addTo(map);
