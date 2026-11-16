@@ -4,6 +4,7 @@ import {
   ComposedChart,
   Area,
   Line,
+  ReferenceLine,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -23,6 +24,7 @@ interface ChartPoint {
   mu_7d: number;
   sigma_7d: number;
   cv_7d: number;
+  z_score: number;
   band_lower: number;
   band_width: number;
 }
@@ -34,6 +36,7 @@ function buildChartData(data: HrvRolling[]): ChartPoint[] {
     mu_7d: d.mu_7d,
     sigma_7d: d.sigma_7d,
     cv_7d: d.cv_7d,
+    z_score: d.z_score,
     band_lower: Math.max(0, d.mu_7d - d.sigma_7d),
     band_width: 2 * d.sigma_7d,
   }));
@@ -118,6 +121,19 @@ export default function HRVRollingChart({ data }: Props) {
               : "#f87171"
           }
         />
+        <StatBadge
+          formula="Z₇d"
+          label="Z-Score"
+          value={(latest.z_score >= 0 ? "+" : "") + latest.z_score.toFixed(2)}
+          unit="σ"
+          color={
+            latest.z_score >= 1
+              ? "#4ade80"
+              : latest.z_score <= -1
+              ? "#f87171"
+              : "#facc15"
+          }
+        />
       </div>
 
       {/* Chart */}
@@ -141,16 +157,16 @@ export default function HRVRollingChart({ data }: Props) {
             tickFormatter={(v) => v.toFixed(2)}
             domain={["auto", "auto"]}
           />
-          {/* Right axis: CV% */}
+          {/* Right axis: Z-score */}
           <YAxis
-            yAxisId="cv"
+            yAxisId="z"
             orientation="right"
             tick={{ fill: "#71717a", fontSize: 10 }}
             axisLine={false}
             tickLine={false}
             width={36}
-            tickFormatter={(v) => `${v.toFixed(1)}%`}
-            domain={[0, "auto"]}
+            tickFormatter={(v) => v.toFixed(1)}
+            domain={[-3, 3]}
           />
           <Tooltip
             contentStyle={{
@@ -165,9 +181,9 @@ export default function HRVRollingChart({ data }: Props) {
             labelFormatter={(v) => `Date: ${v}`}
             formatter={(value, name) => {
               const v = Number(value ?? 0);
-              if (name === "μ₇d") return [`${v.toFixed(4)}`, "μ₇d (lnHRV mean)"];
-              if (name === "CV%")  return [`${v.toFixed(2)}%`, "CV₇d"];
-              if (name === "σ₇d") return [`${v.toFixed(4)}`, "σ₇d (lnHRV SD)"];
+              if (name === "μ₇d")   return [`${v.toFixed(4)}`, "μ₇d (lnHRV mean)"];
+              if (name === "Z₇d")   return [`${v >= 0 ? "+" : ""}${v.toFixed(3)}σ`, "Z-score"];
+              if (name === "σ₇d")   return [`${v.toFixed(4)}`, "σ₇d (lnHRV SD)"];
               return [`${v}`, String(name)];
             }}
           />
@@ -207,14 +223,19 @@ export default function HRVRollingChart({ data }: Props) {
             connectNulls
           />
 
-          {/* CV% line */}
+          {/* Z-score reference lines */}
+          <ReferenceLine yAxisId="z" y={1}  stroke="#4ade80" strokeDasharray="3 3" strokeWidth={1} />
+          <ReferenceLine yAxisId="z" y={0}  stroke="#52525b" strokeDasharray="2 4" strokeWidth={1} />
+          <ReferenceLine yAxisId="z" y={-1} stroke="#f87171" strokeDasharray="3 3" strokeWidth={1} />
+
+          {/* Z-score line */}
           <Line
-            yAxisId="cv"
-            dataKey="cv_7d"
+            yAxisId="z"
+            dataKey="z_score"
             stroke="#facc15"
             strokeWidth={1.5}
             dot={false}
-            name="CV%"
+            name="Z₇d"
             strokeDasharray="4 3"
             connectNulls
           />
@@ -223,7 +244,7 @@ export default function HRVRollingChart({ data }: Props) {
 
       {/* Legend note */}
       <p className="text-[10px] text-zinc-400 mt-3 text-center">
-        Blue band = μ ± σ · Yellow dashed = CV% (right axis) · Green &lt;5% · Yellow 5–10% · Red &gt;10%
+        Blue band = μ ± σ · Yellow dashed = Z-score (right axis) · Green ≥+1σ · Yellow −1–+1σ · Red ≤−1σ
       </p>
     </div>
   );

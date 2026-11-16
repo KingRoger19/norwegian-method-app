@@ -212,12 +212,15 @@ async def get_hrv_rolling(
         mu = sum(ln_vals) / 7
         sigma = math.sqrt(sum((v - mu) ** 2 for v in ln_vals) / 6)  # sample SD (n-1)
         cv = (sigma / mu) * 100 if mu != 0 else 0.0
+        ln_today = ln_vals[-1]
+        z_score = (ln_today - mu) / sigma if sigma > 0 else 0.0
 
         result.append({
             "date": row_date.isoformat(),
             "mu_7d": round(mu, 4),
             "sigma_7d": round(sigma, 4),
             "cv_7d": round(cv, 4),
+            "z_score": round(z_score, 3),
         })
 
     return result
