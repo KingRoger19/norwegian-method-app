@@ -307,14 +307,24 @@ BATCH_SIZE = 50
 
 
 def _find_duplicate_activity_id(
-    existing_by_date: dict[date, list[tuple[str, float]]],
+    existing_by_date: dict[date, list[tuple[str, float, datetime]]],
     activity_date: date,
     distance_meters: float,
+    start_time: datetime,
     tolerance: float = 0.05,
+    time_window_secs: int = 300,
 ) -> str | None:
-    """Return an existing activity_id on the same date with distance within tolerance%, else None."""
-    for aid, dist in existing_by_date.get(activity_date, []):
-        if dist > 0 and abs(dist - distance_meters) / dist <= tolerance:
+    """Return an existing activity_id on the same date whose start_time is within
+    time_window_secs AND whose distance is within tolerance%, else None."""
+    for aid, dist, existing_start in existing_by_date.get(activity_date, []):
+        if dist <= 0:
+            continue
+        if abs(dist - distance_meters) / dist > tolerance:
+            continue
+        # Normalise both to UTC-aware for comparison
+        a = start_time if start_time.tzinfo else start_time.replace(tzinfo=timezone.utc)
+        b = existing_start if existing_start.tzinfo else existing_start.replace(tzinfo=timezone.utc)
+        if abs((a - b).total_seconds()) <= time_window_secs:
             return aid
     return None
 
@@ -338,12 +348,13 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
             select(DailyMetrics.date, DailyMetrics.lactate_threshold_hr)
         )).all()
         existing_rows = (await session.execute(
-            select(ActivitySummary.activity_id, ActivitySummary.date, ActivitySummary.distance_meters)
+            select(ActivitySummary.activity_id, ActivitySummary.date,
+                   ActivitySummary.distance_meters, ActivitySummary.start_time)
         )).all()
     lthr_by_date: dict[date, int | None] = {r[0]: r[1] for r in metric_rows}
-    existing_by_date: dict[date, list[tuple[str, float]]] = {}
-    for aid, adate, adist in existing_rows:
-        existing_by_date.setdefault(adate, []).append((aid, adist or 0.0))
+    existing_by_date: dict[date, list[tuple[str, float, datetime]]] = {}
+    for aid, adate, adist, astart in existing_rows:
+        existing_by_date.setdefault(adate, []).append((aid, adist or 0.0, astart))
 
     for batch_start in range(0, len(files), BATCH_SIZE):
         batch = files[batch_start: batch_start + BATCH_SIZE]
@@ -372,7 +383,9 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
             # reuse its activity_id so the .fit data overwrites it instead of
             # creating a duplicate row.
             existing_id = _find_duplicate_activity_id(
-                existing_by_date, activity_date, parsed["summary"]["distance_meters"]
+                existing_by_date, activity_date,
+                parsed["summary"]["distance_meters"],
+                parsed["summary"]["start_time"],
             )
             if existing_id and existing_id != parsed["activity_id"]:
                 parsed["summary"]["activity_id"] = existing_id
