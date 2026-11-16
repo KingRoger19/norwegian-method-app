@@ -119,6 +119,38 @@ class ActivityTimeSeries(Base):
     activity: Mapped["ActivitySummary"] = relationship(back_populates="time_series")
 
 
+class IntervalAnalysis(Base):
+    __tablename__ = "interval_analyses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    activity_id: Mapped[str] = mapped_column(String(50), ForeignKey("activity_summaries.activity_id"), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String)
+    warmup_secs: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    reps: Mapped[int] = mapped_column(Integer, nullable=False)
+    effort_secs: Mapped[int] = mapped_column(Integer, nullable=False)
+    recovery_secs: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), server_default=text("NOW()"))
+
+    sets: Mapped[list["IntervalSet"]] = relationship(
+        back_populates="analysis", cascade="all, delete-orphan", order_by="IntervalSet.set_number"
+    )
+
+
+class IntervalSet(Base):
+    __tablename__ = "interval_sets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    analysis_id: Mapped[int] = mapped_column(Integer, ForeignKey("interval_analyses.id"), nullable=False)
+    set_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    peak_hr: Mapped[Optional[int]] = mapped_column(Integer)
+    hrr30: Mapped[Optional[int]] = mapped_column(Integer)
+    hrr60: Mapped[Optional[int]] = mapped_column(Integer)
+    hrr90: Mapped[Optional[int]] = mapped_column(Integer)
+    hrr120: Mapped[Optional[int]] = mapped_column(Integer)
+
+    analysis: Mapped["IntervalAnalysis"] = relationship(back_populates="sets")
+
+
 class AthleteProfile(Base):
     """Single-row athlete configuration table (id always = 1)."""
     __tablename__ = "athlete_profile"

@@ -264,6 +264,57 @@ const SECTIONS: Section[] = [
     ],
   },
   {
+    id: "hrr",
+    title: "Heart Rate Recovery (HRR) Analysis",
+    intro:
+      "Available for interval-type activities (Interval, Fartlek, Sprint hills, Varied tempo run) that have per-second HR data from a .fit upload. You describe the workout structure (reps × effort + recovery), and the app segments the HR stream to compute recovery metrics per set.",
+    metrics: [
+      {
+        name: "Peak HR",
+        description:
+          "The highest heart rate recorded during each effort window (from effort_start to effort_end). Computed as the maximum HR across all per-second readings in that window.",
+        formula: "peak_hr = max(HR[effort_start … effort_end])",
+        note: "If no HR data exists in the effort window, peak_hr is null for that set.",
+      },
+      {
+        name: "HRR30 — Heart Rate Recovery at 30 s",
+        formula: "HRR30 = peak_hr − HR(effort_end + 30 s)",
+        description:
+          "The drop in heart rate from the effort peak to 30 seconds after the effort ends. HRR30 is primarily a measure of parasympathetic reactivation speed — the faster your heart rate drops in the first 30 s, the stronger your vagal rebound. Well-trained endurance athletes typically see HRR30 ≥ 25 bpm.",
+        thresholds: [
+          { label: "Good reactivation", color: "green", condition: "HRR30 ≥ 25 bpm" },
+          { label: "Moderate", color: "amber", condition: "15 – 24 bpm" },
+          { label: "Poor / fatigued", color: "red", condition: "< 15 bpm" },
+        ],
+      },
+      {
+        name: "HRR60 — Heart Rate Recovery at 60 s",
+        formula: "HRR60 = peak_hr − HR(effort_end + 60 s)",
+        description:
+          "Drop from peak to 60 seconds post-effort. By 60 s the initial vagal burst has slowed and metabolic clearance takes over. Tracking HRR60 across sets within a session reveals cumulative fatigue — a narrowing drop from set to set indicates accumulating lactate or incomplete recovery.",
+        thresholds: [
+          { label: "Good clearance", color: "green", condition: "HRR60 ≥ 40 bpm" },
+          { label: "Moderate", color: "amber", condition: "25 – 39 bpm" },
+          { label: "Poor", color: "red", condition: "< 25 bpm" },
+        ],
+      },
+      {
+        name: "HRR90 — Heart Rate Recovery at 90 s",
+        formula: "HRR90 = peak_hr − HR(effort_end + 90 s)",
+        description:
+          "Drop from peak to 90 seconds post-effort. Useful only when recovery intervals are long enough (≥ 90 s). A levelling-off between HRR60 and HRR90 suggests HR has reached its recovery plateau.",
+      },
+      {
+        name: "HRR120 — Heart Rate Recovery at 120 s",
+        formula: "HRR120 = peak_hr − HR(effort_end + 120 s)",
+        description:
+          "Drop from peak to 2 minutes post-effort. If your recovery interval is exactly 60 s, the HR sampled at effort_end + 120 s overlaps with the next effort window and will reflect the new effort's HR, not recovery — always ensure the recovery duration exceeds 120 s before interpreting this value.",
+        note:
+          "If the requested time offset falls outside the recorded stream (e.g. too close to end of file), the value is null. The app searches within a 5-second radius around each target offset.",
+      },
+    ],
+  },
+  {
     id: "lactate",
     title: "Lactate Measurements",
     intro:

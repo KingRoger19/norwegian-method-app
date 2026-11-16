@@ -226,6 +226,48 @@ export const bulkDeleteActivities = (ids: string[]) =>
     body: JSON.stringify({ activity_ids: ids }),
   });
 
+// ── Interval Analysis ─────────────────────────────────────────────────────────
+
+export const INTERVAL_ANALYSIS_TAGS = ["Interval", "Fartlek", "Sprint hills", "Varied tempo run"] as const;
+
+export interface IntervalSet {
+  set_number: number;
+  peak_hr: number | null;
+  hrr30: number | null;
+  hrr60: number | null;
+  hrr90: number | null;
+  hrr120: number | null;
+}
+
+export interface IntervalAnalysis {
+  id: number;
+  activity_id: string;
+  description: string | null;
+  warmup_secs: number;
+  reps: number;
+  effort_secs: number;
+  recovery_secs: number;
+  created_at: string;
+  sets: IntervalSet[];
+}
+
+export interface IntervalAnalysisRequest {
+  description?: string;
+  warmup_secs: number;
+  reps: number;
+  effort_secs: number;
+  recovery_secs: number;
+}
+
+export const getIntervalAnalysis = (activityId: string) =>
+  apiFetch<IntervalAnalysis | null>(`/activities/${activityId}/interval-analysis`);
+
+export const createIntervalAnalysis = (activityId: string, req: IntervalAnalysisRequest) =>
+  apiFetch<IntervalAnalysis>(`/activities/${activityId}/interval-analysis`, {
+    method: "POST",
+    body: JSON.stringify(req),
+  });
+
 // ── Sync ──────────────────────────────────────────────────────────────────────
 
 export const triggerSync = (weeks = 1) =>

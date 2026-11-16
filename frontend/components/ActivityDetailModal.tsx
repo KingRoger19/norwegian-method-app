@@ -12,7 +12,14 @@ import {
   ResponsiveContainer,
   ReferenceLine,
 } from "recharts";
-import { ActivityDetail } from "@/lib/api";
+import {
+  ActivityDetail,
+  IntervalAnalysis,
+  INTERVAL_ANALYSIS_TAGS,
+  getIntervalAnalysis,
+  createIntervalAnalysis,
+  type IntervalAnalysisRequest,
+} from "@/lib/api";
 import { fmtDuration, fmtShortDate, speedToPace, downsample } from "@/lib/utils";
 
 const ActivityMap = dynamic(() => import("@/components/ActivityMap"), { ssr: false });
@@ -55,13 +62,59 @@ function fmtPaceDecimal(val: number | null): string {
   return `${m}:${String(s).padStart(2, "0")} /km`;
 }
 
+const isIntervalTag = (tag: string | null) =>
+  tag !== null && (INTERVAL_ANALYSIS_TAGS as readonly string[]).includes(tag);
+
+const fmtSecs = (s: number) => {
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return sec === 0 ? `${m}m` : `${m}m ${sec}s`;
+};
+
 export default function ActivityDetailModal({ activity, onClose }: Props) {
   const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // Interval analysis state
+  const [analysis, setAnalysis] = useState<IntervalAnalysis | null | undefined>(undefined); // undefined = loading
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ description: "", warmup_secs: 0, reps: 10, effort_secs: 120, recovery_secs: 60 });
+  const [submitting, setSubmitting] = useState(false);
+  const [analysisFailed, setAnalysisFailed] = useState("");
+
   useEffect(() => {
     setChartData(buildChartData(activity));
   }, [activity]);
+
+  useEffect(() => {
+    if (!isIntervalTag(activity.activity_tag ?? null)) return;
+    setAnalysis(undefined);
+    getIntervalAnalysis(activity.activity_id)
+      .then(setAnalysis)
+      .catch(() => setAnalysis(null));
+  }, [activity.activity_id, activity.activity_tag]);
+
+  async function handleAnalysisSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+    setAnalysisFailed("");
+    try {
+      const req: IntervalAnalysisRequest = {
+        description: form.description || undefined,
+        warmup_secs: form.warmup_secs,
+        reps: form.reps,
+        effort_secs: form.effort_secs,
+        recovery_secs: form.recovery_secs,
+      };
+      const result = await createIntervalAnalysis(activity.activity_id, req);
+      setAnalysis(result);
+      setShowForm(false);
+    } catch (err) {
+      setAnalysisFailed(err instanceof Error ? err.message : "Analysis failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   // Close on Escape
   useEffect(() => {
@@ -368,8 +421,225 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                 ))}
             </div>
           )}
+
+          {/* Interval Analysis — only for interval-type tags */}
+          {isIntervalTag(activity.activity_tag ?? null) && (
+            <div className="pt-4 border-t border-zinc-800">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-medium text-zinc-300 uppercase tracking-wider">
+                  Heart Rate Recovery Analysis
+                </p>
+                {analysis !== undefined && (
+                  <button
+                    onClick={() => setShowForm((v) => !v)}
+                    className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    {showForm ? "Cancel" : analysis ? "Re-analyze" : "Analyze intervals"}
+                  </button>
+                )}
+              </div>
+
+              {/* Loading state */}
+              {analysis === undefined && (
+                <p className="text-xs text-zinc-500">Loading…</p>
+              )}
+
+              {/* Analysis form */}
+              {(showForm || (analysis === null && !showForm)) && analysis === null && (
+                <div className="bg-zinc-800/40 rounded-xl p-4 mb-3">
+                  <p className="text-xs text-zinc-400 mb-3">
+                    Describe the workout structure so each interval can be segmented from the HR stream.
+                  </p>
+                  <form onSubmit={handleAnalysisSubmit} className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-zinc-300 mb-1">Description (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 10×2min + 1min"
+                        value={form.description}
+                        onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
+                        <input type="number" min={1} max={50} value={form.reps}
+                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Warmup (seconds)</label>
+                        <input type="number" min={0} step={30} value={form.warmup_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, warmup_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Effort duration (seconds)</label>
+                        <input type="number" min={5} step={10} value={form.effort_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, effort_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Recovery duration (seconds)</label>
+                        <input type="number" min={5} step={10} value={form.recovery_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, recovery_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                    </div>
+                    {analysisFailed && (
+                      <p className="text-xs text-red-400">{analysisFailed}</p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg px-4 py-2 transition-colors"
+                    >
+                      {submitting ? "Computing…" : "Compute HRR"}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Re-analyze form (when analysis exists and user clicked Re-analyze) */}
+              {showForm && analysis !== null && (
+                <div className="bg-zinc-800/40 rounded-xl p-4 mb-3">
+                  <form onSubmit={handleAnalysisSubmit} className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-zinc-300 mb-1">Description (optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 10×2min + 1min"
+                        value={form.description}
+                        onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                        className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
+                        <input type="number" min={1} max={50} value={form.reps}
+                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Warmup (seconds)</label>
+                        <input type="number" min={0} step={30} value={form.warmup_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, warmup_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Effort duration (seconds)</label>
+                        <input type="number" min={5} step={10} value={form.effort_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, effort_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Recovery duration (seconds)</label>
+                        <input type="number" min={5} step={10} value={form.recovery_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, recovery_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                    </div>
+                    {analysisFailed && (
+                      <p className="text-xs text-red-400">{analysisFailed}</p>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg px-4 py-2 transition-colors"
+                    >
+                      {submitting ? "Computing…" : "Recompute HRR"}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Results table */}
+              {analysis && !showForm && (
+                <div>
+                  {analysis.description && (
+                    <p className="text-xs text-zinc-400 mb-2 italic">
+                      {analysis.description} · {analysis.reps}×{fmtSecs(analysis.effort_secs)} effort / {fmtSecs(analysis.recovery_secs)} recovery
+                      {analysis.warmup_secs > 0 && ` · ${fmtSecs(analysis.warmup_secs)} warmup`}
+                    </p>
+                  )}
+                  <div className="overflow-x-auto rounded-lg border border-zinc-800">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-800/60 border-b border-zinc-700">
+                          <th className="px-3 py-2 text-left text-zinc-300 font-medium">Set</th>
+                          <th className="px-3 py-2 text-center text-zinc-300 font-medium">Peak HR</th>
+                          <th className="px-3 py-2 text-center text-emerald-400 font-medium">HRR30</th>
+                          <th className="px-3 py-2 text-center text-blue-400 font-medium">HRR60</th>
+                          <th className="px-3 py-2 text-center text-violet-400 font-medium">HRR90</th>
+                          <th className="px-3 py-2 text-center text-amber-400 font-medium">HRR120</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analysis.sets.map((s) => (
+                          <tr key={s.set_number} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
+                            <td className="px-3 py-2 text-zinc-300 font-medium">#{s.set_number}</td>
+                            <td className="px-3 py-2 text-center tabular text-zinc-200">
+                              {s.peak_hr !== null ? `${s.peak_hr} bpm` : "—"}
+                            </td>
+                            <td className="px-3 py-2 text-center tabular">
+                              <HrrCell value={s.hrr30} />
+                            </td>
+                            <td className="px-3 py-2 text-center tabular">
+                              <HrrCell value={s.hrr60} />
+                            </td>
+                            <td className="px-3 py-2 text-center tabular">
+                              <HrrCell value={s.hrr90} />
+                            </td>
+                            <td className="px-3 py-2 text-center tabular">
+                              <HrrCell value={s.hrr120} />
+                            </td>
+                          </tr>
+                        ))}
+                        {/* Averages row */}
+                        {analysis.sets.length > 1 && (() => {
+                          const avg = (key: keyof typeof analysis.sets[0]) => {
+                            const vals = analysis.sets.map((s) => s[key]).filter((v): v is number => v !== null);
+                            return vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
+                          };
+                          return (
+                            <tr className="bg-zinc-800/40 border-t border-zinc-700">
+                              <td className="px-3 py-2 text-zinc-400 font-medium text-xs italic">avg</td>
+                              <td className="px-3 py-2 text-center tabular text-zinc-400">
+                                {avg("peak_hr") !== null ? `${avg("peak_hr")} bpm` : "—"}
+                              </td>
+                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr30")} muted /></td>
+                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr60")} muted /></td>
+                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr90")} muted /></td>
+                              <td className="px-3 py-2 text-center tabular"><HrrCell value={avg("hrr120")} muted /></td>
+                            </tr>
+                          );
+                        })()}
+                      </tbody>
+                    </table>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-2">
+                    HRR = Peak HR − HR at T seconds after effort end. Higher = faster recovery.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
+}
+
+function HrrCell({ value, muted = false }: { value: number | null; muted?: boolean }) {
+  if (value === null) return <span className="text-zinc-600">—</span>;
+  const color = muted
+    ? "text-zinc-400"
+    : value >= 25
+    ? "text-emerald-400"
+    : value >= 15
+    ? "text-amber-400"
+    : "text-red-400";
+  return <span className={`font-semibold ${color}`}>−{value}</span>;
 }
