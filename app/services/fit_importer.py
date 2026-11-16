@@ -306,6 +306,19 @@ async def _upsert_time_series(session, rows: list[dict]) -> None:
 BATCH_SIZE = 50
 
 
+def _find_duplicate_activity_id(
+    existing_by_date: dict[date, list[tuple[str, float]]],
+    activity_date: date,
+    distance_meters: float,
+    tolerance: float = 0.05,
+) -> str | None:
+    """Return an existing activity_id on the same date with distance within tolerance%, else None."""
+    for aid, dist in existing_by_date.get(activity_date, []):
+        if dist > 0 and abs(dist - distance_meters) / dist <= tolerance:
+            return aid
+    return None
+
+
 async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportResult:
     result = ImportResult()
     files = sorted(Path(fit_dir).glob("*.fit"))
@@ -319,12 +332,18 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
     lt1_ratio = effective_lt1_ratio(profile)
     profile_lt2_hr = profile.lt2_hr if profile else None
 
-    # Pre-load per-date LTHR from daily_metrics
+    # Pre-load per-date LTHR and existing activity IDs for dedup matching
     async with AsyncSessionLocal() as session:
-        rows = (await session.execute(
+        metric_rows = (await session.execute(
             select(DailyMetrics.date, DailyMetrics.lactate_threshold_hr)
         )).all()
-    lthr_by_date: dict[date, int | None] = {r[0]: r[1] for r in rows}
+        existing_rows = (await session.execute(
+            select(ActivitySummary.activity_id, ActivitySummary.date, ActivitySummary.distance_meters)
+        )).all()
+    lthr_by_date: dict[date, int | None] = {r[0]: r[1] for r in metric_rows}
+    existing_by_date: dict[date, list[tuple[str, float]]] = {}
+    for aid, adate, adist in existing_rows:
+        existing_by_date.setdefault(adate, []).append((aid, adist or 0.0))
 
     for batch_start in range(0, len(files), BATCH_SIZE):
         batch = files[batch_start: batch_start + BATCH_SIZE]
@@ -348,6 +367,16 @@ async def run_fit_import(fit_dir: str, progress_callback: Any = None) -> ImportR
             parsed["summary"]["zone1_secs"] = z1
             parsed["summary"]["zone2_secs"] = z2
             parsed["summary"]["zone3_secs"] = z3
+
+            # If a Coros-synced record already exists for this date+distance,
+            # reuse its activity_id so the .fit data overwrites it instead of
+            # creating a duplicate row.
+            existing_id = _find_duplicate_activity_id(
+                existing_by_date, activity_date, parsed["summary"]["distance_meters"]
+            )
+            if existing_id and existing_id != parsed["activity_id"]:
+                parsed["summary"]["activity_id"] = existing_id
+                parsed["activity_id"] = existing_id
 
             summary_rows.append(parsed["summary"])
             if parsed["stream"].get("timestamps"):
