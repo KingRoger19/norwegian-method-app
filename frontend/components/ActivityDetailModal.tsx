@@ -78,7 +78,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
   // Interval analysis state
   const [analysis, setAnalysis] = useState<IntervalAnalysis | null | undefined>(undefined); // undefined = loading
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ description: "", interval_type: "time" as "time" | "distance", warmup_secs: 0, reps: 10, effort_secs: 120, recovery_secs: 60, effort_meters: 400, recovery_meters: 200 });
+  const [form, setForm] = useState({ description: "", interval_type: "time" as "time" | "distance" | "auto", warmup_secs: 0, cooldown_secs: 0, reps: 10, effort_secs: 120, recovery_secs: 60, effort_meters: 400, recovery_meters: 200, effort_hr_threshold: "" });
   const [submitting, setSubmitting] = useState(false);
   const [analysisFailed, setAnalysisFailed] = useState("");
 
@@ -103,10 +103,12 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
         description: form.description || undefined,
         interval_type: form.interval_type,
         warmup_secs: form.warmup_secs,
-        reps: form.reps,
+        cooldown_secs: form.cooldown_secs,
         ...(form.interval_type === "time"
-          ? { effort_secs: form.effort_secs, recovery_secs: form.recovery_secs }
-          : { effort_meters: form.effort_meters, recovery_meters: form.recovery_meters }),
+          ? { reps: form.reps, effort_secs: form.effort_secs, recovery_secs: form.recovery_secs }
+          : form.interval_type === "distance"
+          ? { reps: form.reps, effort_meters: form.effort_meters, recovery_meters: form.recovery_meters }
+          : { effort_hr_threshold: form.effort_hr_threshold !== "" ? Number(form.effort_hr_threshold) : undefined }),
       };
       const result = await createIntervalAnalysis(activity.activity_id, req);
       setAnalysis(result);
@@ -455,11 +457,11 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                   <form onSubmit={handleAnalysisSubmit} className="space-y-3">
                     {/* Interval type switcher */}
                     <div className="flex rounded-lg overflow-hidden border border-zinc-700 w-fit">
-                      {(["time", "distance"] as const).map((t) => (
+                      {(["time", "distance", "auto"] as const).map((t) => (
                         <button key={t} type="button"
                           onClick={() => setForm((f) => ({ ...f, interval_type: t }))}
                           className={`px-4 py-1.5 text-xs font-medium transition-colors ${form.interval_type === t ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"}`}>
-                          {t === "time" ? "Time" : "Distance"}
+                          {t === "time" ? "Time" : t === "distance" ? "Distance" : "Auto-detect"}
                         </button>
                       ))}
                     </div>
@@ -467,7 +469,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                       <label className="block text-xs text-zinc-300 mb-1">Description (optional)</label>
                       <input
                         type="text"
-                        placeholder={form.interval_type === "time" ? "e.g. 10×2min + 1min" : "e.g. 10×400m + 200m"}
+                        placeholder={form.interval_type === "time" ? "e.g. 10×2min + 1min" : form.interval_type === "distance" ? "e.g. 10×400m + 200m" : "e.g. fartlek session"}
                         value={form.description}
                         onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-blue-500"
@@ -475,18 +477,25 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
-                        <input type="number" min={1} max={50} value={form.reps}
-                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
-                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
-                      </div>
-                      <div>
                         <label className="block text-xs text-zinc-300 mb-1">Warmup (seconds)</label>
                         <input type="number" min={0} step={1} value={form.warmup_secs}
                           onChange={(e) => setForm((f) => ({ ...f, warmup_secs: Number(e.target.value) }))}
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
                       </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Cooldown (seconds)</label>
+                        <input type="number" min={0} step={1} value={form.cooldown_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, cooldown_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
                       {form.interval_type === "time" ? (<>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
+                        <input type="number" min={1} max={50} value={form.reps}
+                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="col-span-1" />
                       <div>
                         <label className="block text-xs text-zinc-300 mb-1">Effort duration (seconds)</label>
                         <input type="number" min={5} step={1} value={form.effort_secs}
@@ -499,7 +508,14 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                           onChange={(e) => setForm((f) => ({ ...f, recovery_secs: Number(e.target.value) }))}
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
                       </div>
-                      </>) : (<>
+                      </>) : form.interval_type === "distance" ? (<>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
+                        <input type="number" min={1} max={50} value={form.reps}
+                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="col-span-1" />
                       <div>
                         <label className="block text-xs text-zinc-300 mb-1">Effort distance (meters)</label>
                         <input type="number" min={50} step={50} value={form.effort_meters}
@@ -511,6 +527,19 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                         <input type="number" min={10} step={50} value={form.recovery_meters}
                           onChange={(e) => setForm((f) => ({ ...f, recovery_meters: Number(e.target.value) }))}
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      </>) : (<>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-zinc-300 mb-1">
+                          HR threshold (bpm) <span className="text-zinc-500">— leave blank to use your LT2 from Athlete Profile</span>
+                        </label>
+                        <input type="number" min={100} max={220} step={1} value={form.effort_hr_threshold}
+                          placeholder="e.g. 165"
+                          onChange={(e) => setForm((f) => ({ ...f, effort_hr_threshold: e.target.value }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-blue-500" />
+                        <p className="text-[10px] text-zinc-500 mt-1">
+                          Segments where your heart rate stays above this value are detected as efforts. Everything below is recovery.
+                        </p>
                       </div>
                       </>)}
                     </div>
@@ -534,11 +563,11 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                   <form onSubmit={handleAnalysisSubmit} className="space-y-3">
                     {/* Interval type switcher */}
                     <div className="flex rounded-lg overflow-hidden border border-zinc-700 w-fit">
-                      {(["time", "distance"] as const).map((t) => (
+                      {(["time", "distance", "auto"] as const).map((t) => (
                         <button key={t} type="button"
                           onClick={() => setForm((f) => ({ ...f, interval_type: t }))}
                           className={`px-4 py-1.5 text-xs font-medium transition-colors ${form.interval_type === t ? "bg-blue-600 text-white" : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"}`}>
-                          {t === "time" ? "Time" : "Distance"}
+                          {t === "time" ? "Time" : t === "distance" ? "Distance" : "Auto-detect"}
                         </button>
                       ))}
                     </div>
@@ -546,7 +575,7 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                       <label className="block text-xs text-zinc-300 mb-1">Description (optional)</label>
                       <input
                         type="text"
-                        placeholder={form.interval_type === "time" ? "e.g. 10×2min + 1min" : "e.g. 10×400m + 200m"}
+                        placeholder={form.interval_type === "time" ? "e.g. 10×2min + 1min" : form.interval_type === "distance" ? "e.g. 10×400m + 200m" : "e.g. fartlek session"}
                         value={form.description}
                         onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                         className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-blue-500"
@@ -554,18 +583,25 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
-                        <input type="number" min={1} max={50} value={form.reps}
-                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
-                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
-                      </div>
-                      <div>
                         <label className="block text-xs text-zinc-300 mb-1">Warmup (seconds)</label>
                         <input type="number" min={0} step={1} value={form.warmup_secs}
                           onChange={(e) => setForm((f) => ({ ...f, warmup_secs: Number(e.target.value) }))}
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
                       </div>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Cooldown (seconds)</label>
+                        <input type="number" min={0} step={1} value={form.cooldown_secs}
+                          onChange={(e) => setForm((f) => ({ ...f, cooldown_secs: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
                       {form.interval_type === "time" ? (<>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
+                        <input type="number" min={1} max={50} value={form.reps}
+                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="col-span-1" />
                       <div>
                         <label className="block text-xs text-zinc-300 mb-1">Effort duration (seconds)</label>
                         <input type="number" min={5} step={1} value={form.effort_secs}
@@ -578,7 +614,14 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                           onChange={(e) => setForm((f) => ({ ...f, recovery_secs: Number(e.target.value) }))}
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
                       </div>
-                      </>) : (<>
+                      </>) : form.interval_type === "distance" ? (<>
+                      <div>
+                        <label className="block text-xs text-zinc-300 mb-1">Reps</label>
+                        <input type="number" min={1} max={50} value={form.reps}
+                          onChange={(e) => setForm((f) => ({ ...f, reps: Number(e.target.value) }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div className="col-span-1" />
                       <div>
                         <label className="block text-xs text-zinc-300 mb-1">Effort distance (meters)</label>
                         <input type="number" min={50} step={50} value={form.effort_meters}
@@ -590,6 +633,19 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                         <input type="number" min={10} step={50} value={form.recovery_meters}
                           onChange={(e) => setForm((f) => ({ ...f, recovery_meters: Number(e.target.value) }))}
                           className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      </>) : (<>
+                      <div className="col-span-2">
+                        <label className="block text-xs text-zinc-300 mb-1">
+                          HR threshold (bpm) <span className="text-zinc-500">— leave blank to use your LT2 from Athlete Profile</span>
+                        </label>
+                        <input type="number" min={100} max={220} step={1} value={form.effort_hr_threshold}
+                          placeholder="e.g. 165"
+                          onChange={(e) => setForm((f) => ({ ...f, effort_hr_threshold: e.target.value }))}
+                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-blue-500" />
+                        <p className="text-[10px] text-zinc-500 mt-1">
+                          Segments where your heart rate stays above this value are detected as efforts. Everything below is recovery.
+                        </p>
                       </div>
                       </>)}
                     </div>
@@ -612,13 +668,17 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                 <div>
                   <p className="text-xs text-zinc-400 mb-2 italic">
                     {analysis.description && <>{analysis.description} · </>}
-                    {analysis.interval_type === "distance"
+                    {analysis.interval_type === "auto"
+                      ? `${analysis.sets.length} intervals detected · threshold ${analysis.effort_hr_threshold} bpm`
+                      : analysis.interval_type === "distance"
                       ? `${analysis.reps}×${analysis.effort_meters}m effort / ${analysis.recovery_meters}m recovery`
                       : `${analysis.reps}×${fmtSecs(analysis.effort_secs ?? 0)} effort / ${fmtSecs(analysis.recovery_secs ?? 0)} recovery`}
                     {analysis.warmup_secs > 0 && ` · ${fmtSecs(analysis.warmup_secs)} warmup`}
+                    {analysis.cooldown_secs > 0 && ` · ${fmtSecs(analysis.cooldown_secs)} cooldown`}
                     <span className="ml-2 uppercase tracking-wide text-zinc-600">{analysis.interval_type}</span>
                   </p>
                   {(() => {
+                    const isAuto = analysis.interval_type === "auto";
                     const hrrCols = (
                       [
                         { key: "hrr30" as const, label: "HRR30", color: "text-emerald-400" },
@@ -637,6 +697,8 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                       <thead>
                         <tr className="bg-zinc-800/60 border-b border-zinc-700">
                           <th className="px-3 py-2 text-left text-zinc-300 font-medium">Set</th>
+                          {isAuto && <th className="px-3 py-2 text-center text-zinc-400 font-medium">Effort</th>}
+                          {isAuto && <th className="px-3 py-2 text-center text-zinc-400 font-medium">Recovery</th>}
                           <th className="px-3 py-2 text-center text-zinc-300 font-medium">Peak HR</th>
                           {hrrCols.map((c) => (
                             <th key={c.key} className={`px-3 py-2 text-center font-medium ${c.color}`}>{c.label}</th>
@@ -647,6 +709,16 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                         {analysis.sets.map((s) => (
                           <tr key={s.set_number} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
                             <td className="px-3 py-2 text-zinc-300 font-medium">#{s.set_number}</td>
+                            {isAuto && (
+                              <td className="px-3 py-2 text-center tabular text-zinc-300 text-[11px]">
+                                {s.effort_duration_secs !== null ? fmtSecs(s.effort_duration_secs) : "—"}
+                              </td>
+                            )}
+                            {isAuto && (
+                              <td className="px-3 py-2 text-center tabular text-zinc-400 text-[11px]">
+                                {s.recovery_duration_secs !== null ? fmtSecs(s.recovery_duration_secs) : "—"}
+                              </td>
+                            )}
                             <td className="px-3 py-2 text-center tabular text-zinc-200">
                               {s.peak_hr !== null ? `${s.peak_hr} bpm` : "—"}
                             </td>
@@ -661,6 +733,8 @@ export default function ActivityDetailModal({ activity, onClose }: Props) {
                         {analysis.sets.length > 1 && (
                           <tr className="bg-zinc-800/40 border-t border-zinc-700">
                             <td className="px-3 py-2 text-zinc-400 font-medium text-xs italic">avg</td>
+                            {isAuto && <td className="px-3 py-2 text-center tabular text-zinc-500 text-[11px]">{avg("effort_duration_secs") !== null ? fmtSecs(avg("effort_duration_secs")!) : "—"}</td>}
+                            {isAuto && <td className="px-3 py-2 text-center tabular text-zinc-500 text-[11px]">{avg("recovery_duration_secs") !== null ? fmtSecs(avg("recovery_duration_secs")!) : "—"}</td>}
                             <td className="px-3 py-2 text-center tabular text-zinc-400">
                               {avg("peak_hr") !== null ? `${avg("peak_hr")} bpm` : "—"}
                             </td>

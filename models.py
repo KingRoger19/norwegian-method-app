@@ -127,11 +127,13 @@ class IntervalAnalysis(Base):
     description: Mapped[Optional[str]] = mapped_column(String)
     interval_type: Mapped[str] = mapped_column(String(10), server_default=text("'time'"))
     warmup_secs: Mapped[int] = mapped_column(Integer, server_default=text("0"))
-    reps: Mapped[int] = mapped_column(Integer, nullable=False)
+    cooldown_secs: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    reps: Mapped[Optional[int]] = mapped_column(Integer)
     effort_secs: Mapped[Optional[int]] = mapped_column(Integer)
     recovery_secs: Mapped[Optional[int]] = mapped_column(Integer)
     effort_meters: Mapped[Optional[int]] = mapped_column(Integer)
     recovery_meters: Mapped[Optional[int]] = mapped_column(Integer)
+    effort_hr_threshold: Mapped[Optional[int]] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=False), server_default=text("NOW()"))
 
     sets: Mapped[list["IntervalSet"]] = relationship(
@@ -145,6 +147,8 @@ class IntervalSet(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     analysis_id: Mapped[int] = mapped_column(Integer, ForeignKey("interval_analyses.id"), nullable=False)
     set_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    effort_duration_secs: Mapped[Optional[int]] = mapped_column(Integer)
+    recovery_duration_secs: Mapped[Optional[int]] = mapped_column(Integer)
     peak_hr: Mapped[Optional[int]] = mapped_column(Integer)
     hrr30: Mapped[Optional[int]] = mapped_column(Integer)
     hrr60: Mapped[Optional[int]] = mapped_column(Integer)

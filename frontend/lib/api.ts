@@ -232,6 +232,8 @@ export const INTERVAL_ANALYSIS_TAGS = ["Interval", "Fartlek", "Sprint hills", "V
 
 export interface IntervalSet {
   set_number: number;
+  effort_duration_secs: number | null;
+  recovery_duration_secs: number | null;
   peak_hr: number | null;
   hrr30: number | null;
   hrr60: number | null;
@@ -243,26 +245,30 @@ export interface IntervalAnalysis {
   id: number;
   activity_id: string;
   description: string | null;
-  interval_type: "time" | "distance";
+  interval_type: "time" | "distance" | "auto";
   warmup_secs: number;
-  reps: number;
+  cooldown_secs: number;
+  reps: number | null;
   effort_secs: number | null;
   recovery_secs: number | null;
   effort_meters: number | null;
   recovery_meters: number | null;
+  effort_hr_threshold: number | null;
   created_at: string;
   sets: IntervalSet[];
 }
 
 export interface IntervalAnalysisRequest {
   description?: string;
-  interval_type: "time" | "distance";
+  interval_type: "time" | "distance" | "auto";
   warmup_secs: number;
-  reps: number;
+  cooldown_secs: number;
+  reps?: number;
   effort_secs?: number;
   recovery_secs?: number;
   effort_meters?: number;
   recovery_meters?: number;
+  effort_hr_threshold?: number;
 }
 
 export const getIntervalAnalysis = (activityId: string) =>
