@@ -7,6 +7,7 @@ import {
   listActivities,
   getActivitiesCount,
   updateActivityLactate,
+  bulkDeleteActivities,
   type Activity,
   type LactateFields,
 } from "@/lib/api";
@@ -28,6 +29,12 @@ export default function AdvancedMetricsPage() {
   const [loading, setLoading] = useState(true);
   const [edits, setEdits] = useState<Record<string, Partial<LactateFields>>>({});
   const [rowStatus, setRowStatus] = useState<Record<string, RowStatus>>({});
+
+  // Select-to-delete mode
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
@@ -129,6 +136,42 @@ export default function AdvancedMetricsPage() {
     router.replace("/login");
   }
 
+  function toggleSelectMode() {
+    setSelectMode((v) => !v);
+    setSelected(new Set());
+    setConfirmDelete(false);
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selected.size === activities.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(activities.map((a) => a.activity_id)));
+    }
+  }
+
+  async function handleDelete() {
+    if (selected.size === 0) return;
+    setDeleting(true);
+    try {
+      await bulkDeleteActivities([...selected]);
+      setSelected(new Set());
+      setConfirmDelete(false);
+      setSelectMode(false);
+      await fetchPage(page);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   const inputBase =
     "bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-blue-500 transition-colors";
 
@@ -165,23 +208,63 @@ export default function AdvancedMetricsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {!selectMode && (
+              <>
+                <button
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  disabled={page === 0 || loading}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  ← Prev
+                </button>
+                <span className="text-xs text-zinc-300 tabular-nums">
+                  {page + 1} / {totalPages || 1}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1 || loading}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  Next →
+                </button>
+              </>
+            )}
             <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0 || loading}
-              className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              onClick={toggleSelectMode}
+              className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
+                selectMode
+                  ? "bg-zinc-700 border-zinc-600 text-zinc-100"
+                  : "bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700"
+              }`}
             >
-              ← Prev
+              {selectMode ? "Cancel" : "Select to delete"}
             </button>
-            <span className="text-xs text-zinc-300 tabular-nums">
-              {page + 1} / {totalPages || 1}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page >= totalPages - 1 || loading}
-              className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 hover:bg-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Next →
-            </button>
+            {selectMode && selected.size > 0 && !confirmDelete && (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="px-3 py-1.5 rounded-lg bg-red-900/60 border border-red-800 text-xs font-medium text-red-300 hover:bg-red-900 transition-colors"
+              >
+                Delete {selected.size} selected
+              </button>
+            )}
+            {selectMode && confirmDelete && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-400">Permanently delete {selected.size} activities?</span>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-500 disabled:opacity-50 text-xs font-semibold text-white transition-colors"
+                >
+                  {deleting ? "Deleting…" : "Confirm"}
+                </button>
+                <button
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-xs text-zinc-300 hover:bg-zinc-700 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -190,6 +273,16 @@ export default function AdvancedMetricsPage() {
           <table className="w-full text-xs border-collapse">
             <thead>
               <tr className="bg-zinc-900 border-b border-zinc-800">
+                {selectMode && (
+                  <th className="px-3 py-2.5 w-8">
+                    <input
+                      type="checkbox"
+                      checked={activities.length > 0 && selected.size === activities.length}
+                      onChange={toggleSelectAll}
+                      className="accent-blue-500 cursor-pointer"
+                    />
+                  </th>
+                )}
                 <th className="text-left px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Date</th>
                 <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Dist</th>
                 <th className="text-right px-3 py-2.5 text-zinc-300 font-medium whitespace-nowrap">Duration</th>
@@ -223,10 +316,27 @@ export default function AdvancedMetricsPage() {
                   return (
                     <tr
                       key={a.activity_id}
+                      onClick={selectMode ? () => toggleSelect(a.activity_id) : undefined}
                       className={`border-b border-zinc-800/60 transition-colors ${
-                        dirty ? "bg-blue-950/20" : "hover:bg-zinc-900/50"
+                        selectMode
+                          ? selected.has(a.activity_id)
+                            ? "bg-red-950/30 cursor-pointer"
+                            : "cursor-pointer hover:bg-zinc-900/50"
+                          : dirty
+                          ? "bg-blue-950/20"
+                          : "hover:bg-zinc-900/50"
                       }`}
                     >
+                      {selectMode && (
+                        <td className="px-3 py-2 w-8" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selected.has(a.activity_id)}
+                            onChange={() => toggleSelect(a.activity_id)}
+                            className="accent-blue-500 cursor-pointer"
+                          />
+                        </td>
+                      )}
                       {/* Fixed columns */}
                       <td className="px-3 py-2 whitespace-nowrap text-zinc-300 font-medium">
                         {a.date}
@@ -241,8 +351,8 @@ export default function AdvancedMetricsPage() {
                         {a.avg_hr ? `${a.avg_hr} bpm` : "—"}
                       </td>
 
-                      {/* Lactate input pairs */}
-                      {[1, 2, 3, 4, 5].flatMap((n) => [
+                      {/* Lactate input pairs — hidden in select mode */}
+                      {!selectMode && [1, 2, 3, 4, 5].flatMap((n) => [
                         <td key={`l${n}-mmol`} className="px-2 py-1.5">
                           <input
                             type="number"
@@ -270,34 +380,36 @@ export default function AdvancedMetricsPage() {
                         </td>,
                       ])}
 
-                      {/* Save button */}
-                      <td className="px-2 py-1.5">
-                        <button
-                          disabled={!dirty || status === "saving"}
-                          onClick={() => saveRow(a.activity_id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
-                            status === "saved"
-                              ? "bg-green-900/60 text-green-400 border border-green-800"
-                              : status === "error"
-                              ? "bg-red-900/60 text-red-400 border border-red-800"
-                              : dirty
-                              ? "bg-blue-600 hover:bg-blue-500 text-white"
-                              : "bg-zinc-800 text-zinc-400 cursor-default border border-zinc-700"
-                          }`}
-                        >
-                          {status === "saving" ? (
-                            <span className="inline-flex items-center gap-1">
-                              <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
-                            </span>
-                          ) : status === "saved" ? (
-                            "✓ Saved"
-                          ) : status === "error" ? (
-                            "Error"
-                          ) : (
-                            "Save"
-                          )}
-                        </button>
-                      </td>
+                      {/* Save button — hidden in select mode */}
+                      {!selectMode && (
+                        <td className="px-2 py-1.5">
+                          <button
+                            disabled={!dirty || status === "saving"}
+                            onClick={() => saveRow(a.activity_id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap ${
+                              status === "saved"
+                                ? "bg-green-900/60 text-green-400 border border-green-800"
+                                : status === "error"
+                                ? "bg-red-900/60 text-red-400 border border-red-800"
+                                : dirty
+                                ? "bg-blue-600 hover:bg-blue-500 text-white"
+                                : "bg-zinc-800 text-zinc-400 cursor-default border border-zinc-700"
+                            }`}
+                          >
+                            {status === "saving" ? (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin inline-block" />
+                              </span>
+                            ) : status === "saved" ? (
+                              "✓ Saved"
+                            ) : status === "error" ? (
+                              "Error"
+                            ) : (
+                              "Save"
+                            )}
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })

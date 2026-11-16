@@ -199,6 +199,12 @@ export const getActivitiesCount = (since?: string) =>
 export const getActivity = (id: string) =>
   apiFetch<ActivityDetail>(`/activities/${id}`);
 
+export const bulkDeleteActivities = (ids: string[]) =>
+  apiFetch<{ deleted: number }>("/activities/bulk", {
+    method: "DELETE",
+    body: JSON.stringify({ activity_ids: ids }),
+  });
+
 // ── Sync ──────────────────────────────────────────────────────────────────────
 
 export const triggerSync = (weeks = 1) =>

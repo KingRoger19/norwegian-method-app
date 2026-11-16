@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from models import ActivitySummary, ActivityTimeSeries, AsyncSessionLocal
 
@@ -164,3 +164,28 @@ async def update_activity_lactate(
                 setattr(activity, field, value)
 
     return {"ok": True}
+
+
+class BulkDeleteRequest(BaseModel):
+    activity_ids: list[str]
+
+
+@router.delete("/bulk")
+async def bulk_delete_activities(body: BulkDeleteRequest) -> dict[str, int]:
+    if not body.activity_ids:
+        raise HTTPException(status_code=422, detail="No activity_ids provided")
+    if len(body.activity_ids) > 200:
+        raise HTTPException(status_code=422, detail="Max 200 activities per request")
+
+    ids = body.activity_ids
+    async with AsyncSessionLocal() as session:
+        async with session.begin():
+            # Delete time series first (no CASCADE on FK)
+            await session.execute(
+                delete(ActivityTimeSeries).where(ActivityTimeSeries.activity_id.in_(ids))
+            )
+            result = await session.execute(
+                delete(ActivitySummary).where(ActivitySummary.activity_id.in_(ids))
+            )
+
+    return {"deleted": result.rowcount}
